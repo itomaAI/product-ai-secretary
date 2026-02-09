@@ -4,7 +4,10 @@
 	global.App.Tools.registerNavTools = function(registry, vfs) {
 		registry.register('list_files', async (params, state) => {
 			const allFiles = vfs.listFiles();
-			const dir = params.path ? (params.path.endsWith('/') ? params.path : params.path + '/') : '';
+			let dir = params.path || '';
+			if (dir === '.' || dir === './') dir = '';
+			else if (dir.length > 0 && !dir.endsWith('/')) dir += '/';
+			
 			const isRecursive = params.recursive === 'true';
 			
 			let result = [];
