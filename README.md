@@ -1,5 +1,5 @@
 
-# MetaOS v2.2 (System 0)
+# MetaOS
 
 **An Intelligent Personal Secretary System running entirely in your browser.**
 
