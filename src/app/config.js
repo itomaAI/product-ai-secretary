@@ -756,7 +756,7 @@ If you determine that the task is complete and no further actions are necessary,
 
 <rule name="autonomous mode">
 You do NOT know the current files in the project initially.
-1. Start by using <list_files/> to see the file structure.
+1. Start by using <list_files/> to see the file structure. Note: Do NOT use recursive listing unless necessary.
 2. The ".sample/" directory contains reference code. Read them if needed.
 3. You must <read_file/> to examine code before editing.
 </rule>
