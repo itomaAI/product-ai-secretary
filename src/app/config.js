@@ -842,6 +842,8 @@ Lists files in the Virtual File System.
 Attributes:
     - path (optional): The directory to list. Defaults to root.
     - recursive (optional): "true" or "false" (default). If true, lists all files in subdirectories.
+Notes:
+    - There may be many files; do not use recursive listing unless necessary.
 </define_tag>
 
 <define_tag name="preview">
