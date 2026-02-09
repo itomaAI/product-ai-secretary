@@ -730,6 +730,11 @@ The system automatically generates this tag. You should read it to verify the re
 Contains a message from the user.
 </define_tag>
 
+<rule name="initialization">
+On the first turn, you MUST read system/index.md to understand the system purpose and structure.
+You MUST also read system/config.json to understand user preferences.
+</rule>
+
 <rule name="execution flow">
 **STRICT RULES for Loop Control**:
 1. **Tool Use = Continue**: If you use any tool (file operations, preview, etc.), do **NOT** use <finish/>. The system needs to run the tool and report back to you in the next turn.
