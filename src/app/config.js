@@ -844,6 +844,7 @@ Attributes:
     - recursive (optional): "true" or "false" (default). If true, lists all files in subdirectories.
 Notes:
     - There may be many files; do not use recursive listing unless necessary.
+    - If you are unfamiliar with the file structure, start with a non-recursive listing of the root directory.
 </define_tag>
 
 <define_tag name="preview">
