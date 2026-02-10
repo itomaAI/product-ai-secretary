@@ -147,25 +147,27 @@ Attributes:
     - path: Target file path.
     - regex (optional): "true" or "false" (default).
 Content:
-    **OPTION 1: Text Replacement (RECOMMENDED)**
-    Use strict markers to define the search block and replacement block.
-    
-    Attributes:
-    - regex="false" (default): The search block is treated as a literal string. Special characters are automatically escaped.
-    - regex="true": The search block is treated as a Regular Expression.
-
-    Constraint:
-    - **You MUST provide only ONE replacement block per <edit_file> tag.**
-    - If you need to modify multiple locations, use multiple <edit_file> tags.
+    **OPTION 1: String Literal Search (DEFAULT, Recommended)**
+    Use this for exact text replacement. No need to escape special characters.
 
     Format:
     <<<<SEARCH
-    (Text to find)
+    (Text to find - Exact Match)
     ====
     (Replacement text)
     >>>>
 
-    **OPTION 2: Line-based Editing (Use ONLY for appending or creating structure)**
+    **OPTION 2: Regex Replacement (Requires regex="true")**
+    Use this ONLY when you need pattern matching. You MUST escape regex special characters in the search block.
+
+    Format:
+    <<<<SEARCH
+    (Regex pattern)
+    ====
+    (Replacement)
+    >>>>
+
+    **OPTION 3: Line-based Editing (Use ONLY for appending or creating structure)**
     Attributes required: mode="replace"|"insert"|"delete"|"append", start, end.
     - mode="insert": Inserts content BEFORE the line specified in 'start'.
     - mode="replace": Overwrites lines from 'start' to 'end'.
