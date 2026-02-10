@@ -18,11 +18,19 @@
 			}
 			const lines = content.split(/\r?\n/);
 			const showNum = params.line_numbers !== 'false';
-			const s = parseInt(params.start || 1);
-			const e = parseInt(params.end || 999999);
+			let s = parseInt(params.start);
+            if (isNaN(s)) s = 1;
+            
+            let e = parseInt(params.end);
+            if (isNaN(e)) e = s + 799; // Default: 800 lines
+
 			const sliced = lines.slice(Math.max(0, s - 1), Math.min(lines.length, e));
 			const contentStr = showNum ? sliced.map((l, i) => `${s + i} | ${l}`).join('\n') : sliced.join('\n');
-			return { log: `[read_file] ${params.path}:\n${contentStr}`, ui: `📖 Read ${params.path} (${sliced.length} lines)` };
+            
+            let logMsg = `[read_file] ${params.path} (Lines ${s}-${Math.min(lines.length, e)} of ${lines.length}):\n${contentStr}`;
+            if (e < lines.length) logMsg += `\n... (Use start=${e+1} to read more)`;
+
+			return { log: logMsg, ui: `📖 Read ${params.path} (${sliced.length} lines)` };
 		});
 		registry.register('create_file', async (params, state) => {
 			const msg = vfs.writeFile(params.path, params.content);
