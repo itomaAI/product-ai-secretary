@@ -51,7 +51,7 @@
 				if (path.startsWith('.sample/')) continue;
 
 				let htmlContent = vfs.readFile(path);
-				htmlContent = this.processHtmlReferences(htmlContent, urlMap);
+				htmlContent = this.processHtmlReferences(htmlContent, urlMap, path);
                 
                 // ★ MetaOS Bridge Injection
                 htmlContent = this.injectMetaOSBridge(htmlContent);
@@ -85,14 +85,50 @@
 			return entryPointUrl;
 		}
 
-		processHtmlReferences(html, urlMap) {
+		processHtmlReferences(html, urlMap, currentFilePath) {
 			const parser = new DOMParser();
 			const doc = parser.parseFromString(html, 'text/html');
+            
+            // Current directory (e.g. "views/tasks.html" -> "views")
+            const currentDir = currentFilePath.includes('/') ? currentFilePath.substring(0, currentFilePath.lastIndexOf('/')) : '';
+
+            const resolvePath = (relPath) => {
+                // 1. Absolute path (from root)
+                if (relPath.startsWith('/')) return relPath.substring(1);
+                // 2. HTTP/HTTPS
+                if (relPath.match(/^https?:\/\//)) return null;
+
+                // 3. Relative path
+                const stack = currentDir ? currentDir.split('/') : [];
+                const parts = relPath.split('/');
+                
+                for (const part of parts) {
+                    if (part === '.') continue;
+                    if (part === '..') {
+                        if (stack.length > 0) stack.pop();
+                    } else {
+                        stack.push(part);
+                    }
+                }
+                return stack.join('/');
+            };
 
 			const replaceAttr = (selector, attr) => {
 				doc.querySelectorAll(selector).forEach(el => {
 					const val = el.getAttribute(attr);
-					if (urlMap[val]) el.setAttribute(attr, urlMap[val]);
+                    if (!val) return;
+                    
+                    // Try exact match first
+					if (urlMap[val]) {
+                        el.setAttribute(attr, urlMap[val]);
+                        return;
+                    }
+
+                    // Try resolved path
+                    const resolved = resolvePath(val);
+                    if (resolved && urlMap[resolved]) {
+                        el.setAttribute(attr, urlMap[resolved]);
+                    }
 				});
 			};
 
