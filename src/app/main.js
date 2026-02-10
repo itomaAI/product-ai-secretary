@@ -185,17 +185,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         alert('System reset complete.');
     });
 
-    // Auto-Backup Timer (Every 30 mins)
-    setInterval(async () => {
-        try {
-            const timestamp = new Date().toLocaleString();
-            await storage.createSnapshot(`Auto Backup (${timestamp})`, vfs.files, state.getHistory());
-            console.log("Auto-backup created.");
-            await storage.pruneSnapshots();
-        } catch (e) {
-            console.error("Auto-backup failed:", e);
-        }
-    }, 30 * 60 * 1000);
+    // Auto-Backup Timer (Disabled by user request to save space)
+    // setInterval(async () => {
+    //     try {
+    //         const timestamp = new Date().toLocaleString();
+    //         await storage.createSnapshot(`Auto Backup (${timestamp})`, vfs.files, state.getHistory());
+    //         console.log("Auto-backup created.");
+    //         await storage.pruneSnapshots();
+    //     } catch (e) {
+    //         console.error("Auto-backup failed:", e);
+    //     }
+    // }, 30 * 60 * 1000);
 
 	ui.chat.on('send', async (text, files) => {
 		ui.chat.setProcessing(true);
