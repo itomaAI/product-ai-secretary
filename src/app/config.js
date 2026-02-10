@@ -146,6 +146,11 @@ Modifies a file.
 Attributes:
     - path: Target file path.
     - regex (optional): "true" or "false" (default).
+
+Constraint:
+    - **You MUST provide only ONE replacement block per <edit_file> tag.**
+    - If you need to modify multiple locations, use multiple <edit_file> tags.
+
 Content:
     **OPTION 1: String Literal Search (DEFAULT, Recommended)**
     Use this for exact text replacement. No need to escape special characters.
