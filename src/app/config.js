@@ -857,6 +857,12 @@ Captures an image of the current preview.
 Attributes: None.
 </define_tag>
 
+<define_tag name="switch_view">
+Switches the current dashboard view to the specified HTML file.
+Attributes:
+    - path: The target HTML file path (e.g., "views/calendar.html", "index.html").
+</define_tag>
+
 <define_tag name="get_time">
 Returns the current system time.
 Attributes: None.

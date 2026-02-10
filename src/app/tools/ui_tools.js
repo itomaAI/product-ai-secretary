@@ -14,6 +14,11 @@
 				return { log: `[take_screenshot] Captured.`, ui: `📸 Screenshot`, image: base64 };
 			} catch (e) { return { log: `[take_screenshot] Failed: ${e.message}`, ui: `⚠️ Screenshot Failed` }; }
 		});
+		registry.register('switch_view', async (params, state) => {
+			const path = params.path || 'index.html';
+			await uiController.refreshPreview(path);
+			return { log: `[switch_view] Switched to ${path}`, ui: `Navigate: ${path}` };
+		});
 		registry.register('ask', async (params, state) => { return { log: `[ask] ${params.content}`, ui: `❓ ${params.content}`, signal: Signal.HALT }; }, Signal.HALT);
 		registry.register('finish', async (params, state) => { return { log: `[finish] Completed.`, ui: `✅ Task Completed`, signal: Signal.TERMINATE }; }, Signal.TERMINATE);
 		registry.register('report', async (params, state) => { return { log: `[report] ${params.content}`, ui: `📢 ${params.content}`, signal: Signal.CONTINUE }; });
