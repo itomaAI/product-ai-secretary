@@ -5,6 +5,8 @@
 
 Built with [MetaForge](https://github.com/itomaAI/product-auto-app-builder) (The AI App Builder).
 
+[**Try it NOW!!**](https://itomaai.github.io/product-ai-secretary/)
+
 ---
 
 ## 🚀 Overview

@@ -17,6 +17,7 @@ MetaOSは単なるダッシュボードではありません。AIによって管
 - **Single-Tenant Architecture**: 使い捨てのプロジェクトではなく、長く付き合うパートナーとして設計されています。「タイムマシン機能」により、いつでも過去の状態に戻せます。
 - **Local Execution**: ブラウザ技術（IndexedDB, VFS）のみを使用し、100%クライアントサイドで動作します。バックエンドサーバーは不要です。
 
+[**今すぐ試す**](https://itomaai.github.io/product-ai-secretary/)
 ---
 
 ## ✨ 機能
