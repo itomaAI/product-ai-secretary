@@ -60,6 +60,10 @@
         // --- AI Interaction ---
         ask: (text, attachments = []) => post('ask_ai', { text, attachments }),
         
+        // --- Host Integration ---
+        renameFile: (oldPath, newPath) => post('rename_file', { oldPath, newPath }),
+        openFile: (path) => post('open_file', { path }),
+
         // Utility
         ready: () => post('view_ready', {})
     };

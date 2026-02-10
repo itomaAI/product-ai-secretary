@@ -155,7 +155,9 @@
         openExternal: (url) => post('open_external', { url }),
         ask: (text, attachments) => post('ask_ai', { text, attachments }),
         ready: () => post('view_ready', {}),
-        on: (event, callback) => window.addEventListener('metaos:' + event, (e) => callback(e.detail))
+        on: (event, callback) => window.addEventListener('metaos:' + event, (e) => callback(e.detail)),
+        renameFile: (oldPath, newPath) => post('rename_file', { oldPath, newPath }),
+        openFile: (path) => post('open_file', { path })
     };
     console.log("MetaOS Bridge Injected");
 })(window);

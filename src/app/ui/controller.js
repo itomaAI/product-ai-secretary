@@ -152,6 +152,17 @@
                             try { this.explorer.render(); } catch(err) { console.error("Explorer render failed", err); }
                             break;
 
+                        case 'rename_file':
+                            result = this.vfs.rename(payload.oldPath, payload.newPath);
+                            try { this.explorer.render(); } catch(err) {}
+                            break;
+
+                        case 'open_file':
+                            // Open file in Host Editor
+                            const content = this.vfs.readFile(payload.path);
+                            this.editor.open(payload.path, content);
+                            break;
+
                         case 'show_notification':
                             console.log(`[MetaOS] ${payload.title}: ${payload.message}`);
                             alert(`${payload.title}\n${payload.message}`);
