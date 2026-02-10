@@ -70,13 +70,19 @@
         _wireComponents() {
             // 1. Explorer -> Open File
             this.explorer.on('open_file', (path, content) => {
-                if (path.match(/\.(png|jpg|jpeg|gif|webp|svg|ico)$/i)) {
+                const BINARY_EXTS = /\.(png|jpg|jpeg|gif|webp|svg|ico|pdf|zip|tar|gz|7z|rar|mp3|wav|mp4|webm|ogg|woff|woff2|ttf|eot|otf)$/i;
+                if (path.match(BINARY_EXTS)) {
                     this.editor.close();
                     this.mediaViewer.open(path, content);
                 } else {
                     this.mediaViewer.close();
                     this.editor.open(path, content);
                 }
+            });
+
+            // Chat -> Media Preview
+            this.chat.on('preview_request', (name, base64, mimeType) => {
+                this.mediaViewer.open(name, base64, mimeType);
             });
 
 			// 2. Explorer -> History Event

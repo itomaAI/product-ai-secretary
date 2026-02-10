@@ -4,13 +4,17 @@
 	global.App.Tools = global.App.Tools || {};
 	global.App.Tools.registerFSTools = function(registry, vfs) {
 		registry.register('read_file', async (params, state) => {
-			const isImage = params.path.match(/\.(png|jpg|jpeg|gif|webp|svg|ico|bmp)$/i);
+			const BINARY_EXTS = /\.(png|jpg|jpeg|gif|webp|svg|ico|bmp|pdf|zip|tar|gz|7z|rar|mp3|wav|mp4|webm|ogg)$/i;
+			const isBinary = params.path.match(BINARY_EXTS);
 			const content = vfs.readFile(params.path);
-			if (isImage) {
-				let base64 = content; let mimeType = 'image/png';
-				if (content.startsWith('data:')) { const parts = content.split(','); base64 = parts[1]; mimeType = parts[0].match(/:(.*?);/)[1]; }
+			if (isBinary) {
+				let base64 = content; let mimeType = 'application/octet-stream';
+				if (params.path.match(/\.pdf$/i)) mimeType = 'application/pdf';
+				else if (params.path.match(/\.zip$/i)) mimeType = 'application/zip';
+				else if (params.path.match(/\.(mp4|webm)$/i)) mimeType = 'video/mp4';
+				if (content.startsWith('data:')) { const parts = content.split(','); base64 = parts[1]; const match = parts[0].match(/:(.*?);/); if (match) mimeType = match[1]; }
 				else if (params.path.endsWith('.svg')) { base64 = btoa(unescape(encodeURIComponent(content))); mimeType = 'image/svg+xml'; }
-				return { log: `[read_file] Read image: ${params.path}`, ui: `🖼️ Read Image ${params.path}`, image: base64, mimeType };
+				return { log: `[read_file] Read binary file: ${params.path} (${mimeType})`, ui: `📦 Read Binary ${params.path}`, image: base64, mimeType: mimeType };
 			}
 			const lines = content.split(/\r?\n/);
 			const showNum = params.line_numbers !== 'false';

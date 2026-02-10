@@ -22,7 +22,9 @@
 				this._emitHistoryEvent('file_created', `User duplicated file: ${this.vfs.copyFile(path, newPath)}`);
 			});
 			this.treeView.on('rename', (oldPath, newPath) => { this._emitHistoryEvent('file_moved', `User action: ${this.vfs.rename(oldPath, newPath)}`); });
+			this.treeView.on('move', (srcPath, destPath) => { try { this._emitHistoryEvent('file_moved', `User moved file (drag&drop): ${this.vfs.rename(srcPath, destPath)}`); } catch (e) { alert(`Move failed: ${e.message}`); } });
 			this.treeView.on('delete', (path) => { this._emitHistoryEvent('file_deleted', `User action: ${this.vfs.deleteFile(path)}`); });
+			this.treeView.on('download', (path) => { try { this._downloadFile(path, this.vfs.readFile(path)); } catch (e) { alert(`Download failed: ${e.message}`); } });
 			this.treeView.on('upload_request', (path) => { this.currentContextUploadPath = path; if (this.contextUploadInput) { this.contextUploadInput.value = ""; this.contextUploadInput.click(); } });
 		}
 		_bindUploads() {
@@ -45,6 +47,46 @@
 					this.vfs.notify(); this._emitHistoryEvent('project_imported', `User opened folder. Imported ${uploadedPaths.length} files.`); e.target.value = "";
 				};
 			}
+			if (this.sidebar) {
+				['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => { this.sidebar.addEventListener(eventName, (e) => { e.preventDefault(); e.stopPropagation(); }, false); });
+				this.sidebar.addEventListener('dragover', (e) => { e.dataTransfer.dropEffect = 'copy'; this.sidebar.classList.add('bg-gray-700'); });
+				this.sidebar.addEventListener('dragleave', () => { this.sidebar.classList.remove('bg-gray-700'); });
+				this.sidebar.addEventListener('drop', async (e) => {
+					this.sidebar.classList.remove('bg-gray-700'); const items = e.dataTransfer.items; if (!items) return;
+					const promises = [];
+					for (let i = 0; i < items.length; i++) { const item = items[i].webkitGetAsEntry ? items[i].webkitGetAsEntry() : null; if (item) promises.push(this._traverseFileTree(item, "")); }
+					const fileEntries = (await Promise.all(promises)).flat(); if (fileEntries.length > 0) this._batchWriteFiles(fileEntries);
+				});
+			}
+		}
+		_traverseFileTree(item, path) {
+			return new Promise((resolve) => {
+				path = path || "";
+				if (item.isFile) { item.file((file) => { file.fullPath = path + file.name; resolve([file]); }); }
+				else if (item.isDirectory) {
+					const dirReader = item.createReader(); const entries = [];
+					const readEntries = () => {
+						dirReader.readEntries(async (results) => {
+							if (!results.length) {
+								const childPromises = entries.map(entry => this._traverseFileTree(entry, path + item.name + "/"));
+								resolve((await Promise.all(childPromises)).flat());
+							} else { entries.push(...results); readEntries(); }
+						});
+					}; readEntries();
+				}
+			});
+		}
+		async _batchWriteFiles(files) {
+			const uploadedPaths = [];
+			for (const file of files) {
+				let relPath = (file.fullPath || file.name).replace(/^\/+/, '');
+				if (relPath.startsWith('.git/') || relPath.includes('/.git/') || relPath === '.DS_Store') continue;
+				try {
+					let content = this._isBinary(file) ? await this._fileToBase64(file) : await file.text();
+					this.vfs.writeFile(relPath, content); uploadedPaths.push(relPath);
+				} catch (err) { console.error(`Failed to import ${relPath}:`, err); }
+			}
+			if (uploadedPaths.length > 0) this._emitHistoryEvent('file_created', `User dropped files/folders:\n${uploadedPaths.slice(0, 5).join(', ')}${uploadedPaths.length > 5 ? '...' : ''}`);
 		}
 		async _handleUploadAppend(e, isFolder, targetDir = "") {
 			const files = Array.from(e.target.files); const uploadedPaths = [];
@@ -57,8 +99,23 @@
 			if (uploadedPaths.length > 0) this._emitHistoryEvent('file_created', `User uploaded files to "${targetDir || 'root'}":\nFiles: ${uploadedPaths.slice(0, 5).join(', ')}${uploadedPaths.length > 5 ? '...' : ''}`);
 			e.target.value = "";
 		}
-		_isBinary(file) { return file.type.startsWith('image/') || file.type === 'application/pdf' || file.name.match(/\.(png|jpg|jpeg|gif|webp|svg|ico|bmp|pdf|woff|woff2|ttf|eot)$/i); }
+		_isBinary(file) {
+			return file.type.startsWith('image/') || file.type === 'application/pdf' || file.type.includes('zip') || file.type.includes('compressed') ||
+				file.type.startsWith('audio/') || file.type.startsWith('video/') ||
+				file.name.match(/\.(png|jpg|jpeg|gif|webp|svg|ico|bmp|pdf|woff|woff2|ttf|eot|otf|zip|tar|gz|7z|rar|mp3|wav|mp4|webm|ogg)$/i);
+		}
 		_fileToBase64(file) { return new Promise((r, j) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = () => r(reader.result); reader.onerror = j; }); }
+		_downloadFile(path, content) {
+			let blob;
+			if (content.startsWith('data:')) {
+				const parts = content.split(','); const mime = parts[0].split(':')[1].split(';')[0]; const byteString = atob(parts[1]);
+				const ab = new ArrayBuffer(byteString.length); const ia = new Uint8Array(ab);
+				for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+				blob = new Blob([ab], { type: mime });
+			} else { blob = new Blob([content], { type: 'text/plain' }); }
+			const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = path.split('/').pop();
+			document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+		}
 		_emitHistoryEvent(type, description) { if (this.events['history_event']) this.events['history_event'](type, description); }
 		_initResizer() {
 			if (!this.resizer || !this.sidebar) return; const overlay = document.getElementById(DOM.resizeOverlay); let isResizing = false;
