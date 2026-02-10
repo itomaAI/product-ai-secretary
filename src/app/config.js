@@ -792,9 +792,14 @@ Content:
 Modifies a file.
 Attributes:
     - path: Target file path.
+    - regex (optional): "true" or "false" (default).
 Content:
-    **OPTION 1: Regex Replacement (RECOMMENDED)**
-    Use strict markers to define the search pattern and replacement string.
+    **OPTION 1: Text Replacement (RECOMMENDED)**
+    Use strict markers to define the search block and replacement block.
+    
+    Attributes:
+    - regex="false" (default): The search block is treated as a literal string. Special characters are automatically escaped.
+    - regex="true": The search block is treated as a Regular Expression.
 
     Constraint:
     - **You MUST provide only ONE replacement block per <edit_file> tag.**
@@ -802,9 +807,9 @@ Content:
 
     Format:
     <<<<SEARCH
-    (Regex pattern)
+    (Text to find)
     ====
-    (Replacement)
+    (Replacement text)
     >>>>
 
     **OPTION 2: Line-based Editing (Use ONLY for appending or creating structure)**

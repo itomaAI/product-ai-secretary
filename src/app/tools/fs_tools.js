@@ -38,6 +38,13 @@
 		});
 		registry.register('edit_file', async (params, state) => {
 			const content = params.content || "";
+            
+            // Priority: Explicit mode -> Line Edit
+            if (params.mode) {
+                const msg = vfs.editLines(params.path, params.start, params.end, params.mode, content);
+			    return { log: `[edit_file] ${msg}`, ui: `✏️ ${msg}` };
+            }
+
 			const MARKER_SEARCH = "<<<<SEARCH"; const MARKER_DIVIDER = "===="; const MARKER_END = ">>>>";
 			if (content.split(MARKER_SEARCH).length > 2) throw new Error("Multiple replacements not allowed.");
 			if (content.includes(MARKER_SEARCH)) {
@@ -51,13 +58,19 @@
 				if (patternStr.endsWith('\n')) patternStr = patternStr.substring(0, patternStr.length - 1);
 				if (replaceStr.startsWith('\n')) replaceStr = replaceStr.substring(1);
 				if (replaceStr.endsWith('\n')) replaceStr = replaceStr.substring(0, replaceStr.length - 1);
-				try { if (vfs.exists(params.path)) { const fileC = vfs.readFile(params.path); if (fileC.includes(patternStr)) patternStr = patternStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); } } catch (e) {}
+				
+                // Regex handling
+                const isRegex = params.regex === 'true';
+                if (!isRegex) {
+                    // Escape for literal match
+                    patternStr = patternStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                }
+                
 				const msg = vfs.replaceContent(params.path, patternStr, replaceStr);
-				return { log: `[edit_file] ${msg}`, ui: `✏️ Regex Replace in ${params.path}` };
+				return { log: `[edit_file] ${msg}`, ui: `✏️ Replace in ${params.path}` };
 			}
-			if (!params.mode) throw new Error("Attribute 'mode' required.");
-			const msg = vfs.editLines(params.path, params.start, params.end, params.mode, content);
-			return { log: `[edit_file] ${msg}`, ui: `✏️ ${msg}` };
+			
+			throw new Error("Invalid <edit_file> content. Use strict markers or specify 'mode' attribute.");
 		});
 	};
 })(window);
