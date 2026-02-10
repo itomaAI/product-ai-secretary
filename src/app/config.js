@@ -166,9 +166,11 @@ Content:
     >>>>
 
     **OPTION 2: Line-based Editing (Use ONLY for appending or creating structure)**
-    Attributes required: mode="replace"|"insert"|"delete", start, end.
+    Attributes required: mode="replace"|"insert"|"delete"|"append", start, end.
     - mode="insert": Inserts content BEFORE the line specified in 'start'.
     - mode="replace": Overwrites lines from 'start' to 'end'.
+    - mode="delete": Deletes lines from 'start' to 'end'. If you want to delete a single line, set start=end.
+    - mode="append": Appends content to the end of the file. (start/end attributes are ignored).
 </define_tag>
 
 <define_tag name="read_file">

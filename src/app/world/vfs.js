@@ -140,6 +140,9 @@
 				const deleteCount = Math.max(0, eLine - sLine + 1);
 				if (sIdx < lines.length) lines.splice(sIdx, deleteCount);
 				actionLog = `Deleted lines ${sLine}-${eLine}`;
+			} else if (mode === 'append') {
+				lines.push(...newLines);
+				actionLog = `Appended ${newLines.length} lines`;
 			} else { throw new Error(`Unknown edit mode: ${mode}`); }
 			this.files[p] = lines.join('\n');
 			this.notify();
