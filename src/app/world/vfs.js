@@ -1,20 +1,38 @@
-
 (function(global) {
 	global.App = global.App || {};
 	global.App.World = global.App.World || {};
 	class VirtualFileSystem {
-		constructor(initialFiles = {}) { this.files = { ...initialFiles }; this.listeners = []; }
-		subscribe(callback) { this.listeners.push(callback); return () => this.listeners = this.listeners.filter(cb => cb !== callback); }
-		notify(path = null, action = null) { this.listeners.forEach(cb => cb(this.files, path, action)); }
-		_norm(path) { if (!path) return ""; return path.replace(/^\/+/, ''); }
-		exists(path) { return Object.prototype.hasOwnProperty.call(this.files, this._norm(path)); }
+		constructor(initialFiles = {}) {
+			this.files = {
+				...initialFiles
+			};
+			this.listeners = [];
+		}
+		subscribe(callback) {
+			this.listeners.push(callback);
+			return () => this.listeners = this.listeners.filter(cb => cb !== callback);
+		}
+		notify(path = null, action = null) {
+			this.listeners.forEach(cb => cb(this.files, path, action));
+		}
+		_norm(path) {
+			if (!path) return "";
+			return path.replace(/^\/+/, '');
+		}
+		exists(path) {
+			return Object.prototype.hasOwnProperty.call(this.files, this._norm(path));
+		}
 		isDirectory(path) {
 			let p = this._norm(path);
 			if (!p) return true;
 			if (!p.endsWith('/')) p += '/';
 			return Object.keys(this.files).some(key => key.startsWith(p));
 		}
-		readFile(path) { const p = this._norm(path); if (!this.exists(p)) throw new Error(`File not found: ${p}`); return this.files[p]; }
+		readFile(path) {
+			const p = this._norm(path);
+			if (!this.exists(p)) throw new Error(`File not found: ${p}`);
+			return this.files[p];
+		}
 		writeFile(path, content) {
 			let p = this._norm(path);
 			if (!p) throw new Error("Cannot write to root path.");
@@ -29,12 +47,20 @@
 			if (p.endsWith('/')) p = p.slice(0, -1);
 			if (!p) return "Root directory always exists.";
 			const keepFile = `${p}/.keep`;
-			if (!this.exists(keepFile)) { this.files[keepFile] = ""; this.notify(); return `Created directory: ${p}`; }
+			if (!this.exists(keepFile)) {
+				this.files[keepFile] = "";
+				this.notify();
+				return `Created directory: ${p}`;
+			}
 			return `Directory already exists: ${p}`;
 		}
 		deleteFile(path) {
 			const p = this._norm(path);
-			if (this.exists(p)) { delete this.files[p]; this.notify(p, 'delete'); return `Deleted file: ${p}`; }
+			if (this.exists(p)) {
+				delete this.files[p];
+				this.notify(p, 'delete');
+				return `Deleted file: ${p}`;
+			}
 			return this.deleteDirectory(p);
 		}
 		deleteDirectory(path) {
@@ -62,7 +88,11 @@
 			if (targets.length > 0) {
 				const conflict = targets.some(k => this.exists(k.replace(oldDir, newDir)));
 				if (conflict) throw new Error(`Destination conflict`);
-				targets.forEach(k => { const dest = k.replace(oldDir, newDir); this.files[dest] = this.files[k]; delete this.files[k]; });
+				targets.forEach(k => {
+					const dest = k.replace(oldDir, newDir);
+					this.files[dest] = this.files[k];
+					delete this.files[k];
+				});
 				this.notify();
 				return `Moved directory: ${oldP} -> ${newP}`;
 			}
@@ -77,16 +107,30 @@
 			this.notify();
 			return `Copied: ${src} -> ${dest}`;
 		}
-		listFiles() { return Object.keys(this.files).sort(); }
+		listFiles() {
+			return Object.keys(this.files).sort();
+		}
 		getTree() {
-			const root = { name: "root", path: "", type: "folder", children: {} };
+			const root = {
+				name: "root",
+				path: "",
+				type: "folder",
+				children: {}
+			};
 			Object.keys(this.files).sort().forEach(filePath => {
 				const parts = filePath.split('/');
 				let current = root;
 				parts.forEach((part, index) => {
 					const isLast = index === parts.length - 1;
 					const fullPath = parts.slice(0, index + 1).join('/');
-					if (!current.children[part]) { current.children[part] = { name: part, path: fullPath, type: isLast ? "file" : "folder", children: {} }; }
+					if (!current.children[part]) {
+						current.children[part] = {
+							name: part,
+							path: fullPath,
+							type: isLast ? "file" : "folder",
+							children: {}
+						};
+					}
 					current = current.children[part];
 					if (!isLast && current.type === "file") current.type = "folder";
 				});
@@ -94,7 +138,12 @@
 			const toArray = (node) => {
 				const children = Object.values(node.children).map(child => toArray(child));
 				children.sort((a, b) => (a.type !== b.type ? (a.type === 'folder' ? -1 : 1) : a.name.localeCompare(b.name)));
-				return { name: node.name, path: node.path, type: node.type, children: children };
+				return {
+					name: node.name,
+					path: node.path,
+					type: node.type,
+					children: children
+				};
 			};
 			return toArray(root).children;
 		}
@@ -104,8 +153,15 @@
 			const content = this.files[p];
 			const originalLength = content.length;
 			let regex;
-			try { regex = new RegExp(patternStr, 'm'); } catch (e) { throw new Error(`Invalid RegExp: ${e.message}`); }
-			if (!regex.test(content)) { const snippet = patternStr.length > 50 ? patternStr.slice(0, 50) + "..." : patternStr; throw new Error(`Pattern not found in ${p}. Search: "${snippet}"`); }
+			try {
+				regex = new RegExp(patternStr, 'm');
+			} catch (e) {
+				throw new Error(`Invalid RegExp: ${e.message}`);
+			}
+			if (!regex.test(content)) {
+				const snippet = patternStr.length > 50 ? patternStr.slice(0, 50) + "..." : patternStr;
+				throw new Error(`Pattern not found in ${p}. Search: "${snippet}"`);
+			}
 			const newContent = content.replace(regex, replacement);
 			if (newContent === content) throw new Error(`Pattern matched but replacement resulted in no change.`);
 			this.files[p] = newContent;
@@ -143,7 +199,9 @@
 			} else if (mode === 'append') {
 				lines.push(...newLines);
 				actionLog = `Appended ${newLines.length} lines`;
-			} else { throw new Error(`Unknown edit mode: ${mode}`); }
+			} else {
+				throw new Error(`Unknown edit mode: ${mode}`);
+			}
 			this.files[p] = lines.join('\n');
 			this.notify();
 			return `Edited ${p}: ${actionLog}`;

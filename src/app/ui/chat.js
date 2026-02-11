@@ -1,4 +1,3 @@
-
 // src/app/ui/chat.js
 
 (function(global) {

@@ -1,4 +1,3 @@
-
 (function(global) {
 	global.App = global.App || {};
 	global.App.Adapters = global.App.Adapters || {};
@@ -57,7 +56,10 @@
 			const tree = [];
 			let cursor = 0;
 			let tagExclude = null;
-			let stack = [{ tag: 'root', content: tree }];
+			let stack = [{
+				tag: 'root',
+				content: tree
+			}];
 			const regexTag = new RegExp(LPMLRegexParser.PATTERN_TAG);
 			let match;
 			const regexStart = new RegExp('^' + LPMLRegexParser.PATTERN_TAG_START + '$');
@@ -87,12 +89,20 @@
 				if (matchTagStart) {
 					const name = matchTagStart[1];
 					if (exclude.includes(name)) tagExclude = name;
-					const el = { tag: name, attributes: LPMLRegexParser.parseAttributes(matchTagStart[2]), content: [] };
+					const el = {
+						tag: name,
+						attributes: LPMLRegexParser.parseAttributes(matchTagStart[2]),
+						content: []
+					};
 					stack[stack.length - 1].content.push(el);
 					stack.push(el);
 				} else if (matchTagEmpty) {
 					const name = matchTagEmpty[1];
-					const el = { tag: name, attributes: LPMLRegexParser.parseAttributes(matchTagEmpty[2]), content: null };
+					const el = {
+						tag: name,
+						attributes: LPMLRegexParser.parseAttributes(matchTagEmpty[2]),
+						content: null
+					};
 					stack[stack.length - 1].content.push(el);
 				} else if (matchTagEnd) {
 					const name = matchTagEnd[1];
@@ -124,7 +134,14 @@
 				if (item.tag === 'edit_file' && contentText.includes('<<<<SEARCH')) {
 					contentText = this._escapeRegexReplacement(contentText);
 				}
-				const action = { type: item.tag, params: { ...item.attributes, content: contentText }, raw: item };
+				const action = {
+					type: item.tag,
+					params: {
+						...item.attributes,
+						content: contentText
+					},
+					raw: item
+				};
 				if (['ask', 'finish'].includes(action.type)) interrupts.push(action);
 				else if (action.type === 'edit_file') edits.push(action);
 				else others.push(action);

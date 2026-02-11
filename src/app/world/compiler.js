@@ -1,4 +1,3 @@
-
 (function(global) {
 	global.App = global.App || {};
 	global.App.World = global.App.World || {};
@@ -23,7 +22,7 @@
 			for (const path of filePaths) {
 				if (path.endsWith('.html')) continue;
 				if (path.startsWith('.sample/')) continue;
-                if (path.startsWith('src/')) continue; // ホストコードは除外（VFSにホストコードが含まれる場合）
+				if (path.startsWith('src/')) continue; // ホストコードは除外（VFSにホストコードが含まれる場合）
 
 				const content = vfs.readFile(path);
 				const mimeType = this.getMimeType(path);
@@ -52,9 +51,9 @@
 
 				let htmlContent = vfs.readFile(path);
 				htmlContent = this.processHtmlReferences(htmlContent, urlMap, path);
-                
-                // ★ MetaOS Bridge Injection
-                htmlContent = this.injectMetaOSBridge(htmlContent);
+
+				// ★ MetaOS Bridge Injection
+				htmlContent = this.injectMetaOSBridge(htmlContent);
 				htmlContent = this.injectScreenshotHelper(htmlContent);
 
 				const blob = new Blob([htmlContent], {
@@ -72,14 +71,14 @@
 
 			// 指定されたエントリポイントが見つからない場合のフォールバック
 			if (!entryPointUrl) {
-                // index.htmlを探す
-                if (urlMap['index.html']) {
-                    entryPointUrl = urlMap['index.html'];
-                } else {
-                    // それもなければ最初のHTML
-				    const firstHtml = filePaths.find(p => p.endsWith('.html') && !p.startsWith('.sample/'));
-				    if (firstHtml) entryPointUrl = urlMap[firstHtml];
-                }
+				// index.htmlを探す
+				if (urlMap['index.html']) {
+					entryPointUrl = urlMap['index.html'];
+				} else {
+					// それもなければ最初のHTML
+					const firstHtml = filePaths.find(p => p.endsWith('.html') && !p.startsWith('.sample/'));
+					if (firstHtml) entryPointUrl = urlMap[firstHtml];
+				}
 			}
 
 			return entryPointUrl;
@@ -88,47 +87,47 @@
 		processHtmlReferences(html, urlMap, currentFilePath) {
 			const parser = new DOMParser();
 			const doc = parser.parseFromString(html, 'text/html');
-            
-            // Current directory (e.g. "views/tasks.html" -> "views")
-            const currentDir = currentFilePath.includes('/') ? currentFilePath.substring(0, currentFilePath.lastIndexOf('/')) : '';
 
-            const resolvePath = (relPath) => {
-                // 1. Absolute path (from root)
-                if (relPath.startsWith('/')) return relPath.substring(1);
-                // 2. HTTP/HTTPS
-                if (relPath.match(/^https?:\/\//)) return null;
+			// Current directory (e.g. "views/tasks.html" -> "views")
+			const currentDir = currentFilePath.includes('/') ? currentFilePath.substring(0, currentFilePath.lastIndexOf('/')) : '';
 
-                // 3. Relative path
-                const stack = currentDir ? currentDir.split('/') : [];
-                const parts = relPath.split('/');
-                
-                for (const part of parts) {
-                    if (part === '.') continue;
-                    if (part === '..') {
-                        if (stack.length > 0) stack.pop();
-                    } else {
-                        stack.push(part);
-                    }
-                }
-                return stack.join('/');
-            };
+			const resolvePath = (relPath) => {
+				// 1. Absolute path (from root)
+				if (relPath.startsWith('/')) return relPath.substring(1);
+				// 2. HTTP/HTTPS
+				if (relPath.match(/^https?:\/\//)) return null;
+
+				// 3. Relative path
+				const stack = currentDir ? currentDir.split('/') : [];
+				const parts = relPath.split('/');
+
+				for (const part of parts) {
+					if (part === '.') continue;
+					if (part === '..') {
+						if (stack.length > 0) stack.pop();
+					} else {
+						stack.push(part);
+					}
+				}
+				return stack.join('/');
+			};
 
 			const replaceAttr = (selector, attr) => {
 				doc.querySelectorAll(selector).forEach(el => {
 					const val = el.getAttribute(attr);
-                    if (!val) return;
-                    
-                    // Try exact match first
-					if (urlMap[val]) {
-                        el.setAttribute(attr, urlMap[val]);
-                        return;
-                    }
+					if (!val) return;
 
-                    // Try resolved path
-                    const resolved = resolvePath(val);
-                    if (resolved && urlMap[resolved]) {
-                        el.setAttribute(attr, urlMap[resolved]);
-                    }
+					// Try exact match first
+					if (urlMap[val]) {
+						el.setAttribute(attr, urlMap[val]);
+						return;
+					}
+
+					// Try resolved path
+					const resolved = resolvePath(val);
+					if (resolved && urlMap[resolved]) {
+						el.setAttribute(attr, urlMap[resolved]);
+					}
 				});
 			};
 
@@ -140,9 +139,9 @@
 			return doc.documentElement.outerHTML;
 		}
 
-        injectMetaOSBridge(html) {
-            // MetaOS Client Bridge Code (Minified/Inline)
-            const script = `
+		injectMetaOSBridge(html) {
+			// MetaOS Client Bridge Code (Minified/Inline)
+			const script = `
 <script>
 (function(global) {
     const REQUESTS = new Map();
@@ -199,15 +198,15 @@
 })(window);
 </script>
 `;
-            if (html.includes('<head>')) {
-                return html.replace('<head>', '<head>' + script);
-            } else {
-                return script + html;
-            }
-        }
+			if (html.includes('<head>')) {
+				return html.replace('<head>', '<head>' + script);
+			} else {
+				return script + html;
+			}
+		}
 
 		injectScreenshotHelper(html) {
-            const script = `
+			const script = `
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
 <script>
 window.addEventListener('message', async (e) => {

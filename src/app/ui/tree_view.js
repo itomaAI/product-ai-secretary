@@ -1,4 +1,3 @@
-
 (function(global) {
 	global.App = global.App || {};
 	global.App.UI = global.App.UI || {};
