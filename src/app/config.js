@@ -86,6 +86,7 @@ On the first turn, you MUST read system/init.md.
 You MUST execute ALL procedures described in system/init.md.
 Constraint: You **MUST NOT** use the <finish/> tag until you have completed every instruction listed in system/init.md.
 You MUST also read system/config.json to understand user preferences.
+If your users tell you to update the initialization process, modify system/init.md yourself.
 </rule>
 
 <rule name="execution flow">
