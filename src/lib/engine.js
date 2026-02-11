@@ -40,7 +40,7 @@
 
 			let currentSignal = Signal.CONTINUE;
 			let loopCount = 0;
-			const MAX_LOOPS = 5; // リトライ等を考慮して少し余裕を持たせる
+			const MAX_LOOPS = 1000;
 
 			// ★追加: 前のターンでエラーが発生したかを追跡するフラグ
 			let lastTurnHadError = false;
