@@ -1,17 +1,42 @@
-
 (function(global) {
 	global.App = global.App || {}; global.App.UI = global.App.UI || {};
 	const DOM = global.App.UI.DOM; const TreeView = global.App.UI.TreeView;
+
 	class ExplorerComponent {
 		constructor(vfs) {
-			this.vfs = vfs; this.events = {}; this.currentContextUploadPath = "";
-			this.treeView = new TreeView(DOM.fileExplorer, DOM.contextMenu); this.sidebar = document.getElementById(DOM.sidebar); this.resizer = document.getElementById(DOM.explorerResizer);
-			this.contextUploadInput = document.getElementById(DOM.contextUploadInput); this.folderInput = document.getElementById(DOM.folderUpload); this.filesInput = document.getElementById(DOM.filesUpload);
-			this.btnOpenFolder = document.getElementById(DOM.btnOpenFolder); this.projectOpenInput = document.getElementById(DOM.projectOpenInput); this.previewFrame = document.getElementById(DOM.previewFrame);
-			this._bindVFS(); this._bindTreeEvents(); this._bindUploads(); this._initResizer();
+			this.vfs = vfs; 
+            this.events = {}; 
+            this.currentContextUploadPath = "";
+            
+			this.treeView = new TreeView(DOM.fileExplorer, DOM.contextMenu); 
+            this.sidebar = document.getElementById(DOM.sidebar); 
+            this.resizer = document.getElementById(DOM.explorerResizer);
+            
+            // Upload Inputs
+			this.contextUploadInput = document.getElementById(DOM.contextUploadInput); 
+            this.folderInput = document.getElementById(DOM.folderUpload); 
+            this.filesInput = document.getElementById(DOM.filesUpload);
+            
+            // Backup Restore Elements (Modified)
+            // Fallback to string IDs if DOM object isn't updated yet
+			this.btnImportBackup = document.getElementById(DOM.btnImportBackup || 'btn-import-backup'); 
+            this.importBackupInput = document.getElementById(DOM.importBackupInput || 'import-backup-input'); 
+            
+            this.previewFrame = document.getElementById(DOM.previewFrame);
+            
+			this._bindVFS(); 
+            this._bindTreeEvents(); 
+            this._bindUploads(); 
+            this._initResizer();
 		}
+
 		on(event, callback) { this.events[event] = callback; }
-		_bindVFS() { this.vfs.subscribe(() => { this.treeView.render(this.vfs.getTree()); }); this.treeView.render(this.vfs.getTree()); }
+
+		_bindVFS() { 
+            this.vfs.subscribe(() => { this.treeView.render(this.vfs.getTree()); }); 
+            this.treeView.render(this.vfs.getTree()); 
+        }
+
 		_bindTreeEvents() {
 			this.treeView.on('open', (path) => { if (this.events['open_file']) this.events['open_file'](path, this.vfs.readFile(path)); });
 			this.treeView.on('create_file', (path) => { this.vfs.writeFile(path, ""); this._emitHistoryEvent('file_created', `User created empty file: ${path}`); if (this.events['open_file']) this.events['open_file'](path, ""); });
@@ -27,26 +52,77 @@
 			this.treeView.on('download', (path) => { try { this._downloadFile(path, this.vfs.readFile(path)); } catch (e) { alert(`Download failed: ${e.message}`); } });
 			this.treeView.on('upload_request', (path) => { this.currentContextUploadPath = path; if (this.contextUploadInput) { this.contextUploadInput.value = ""; this.contextUploadInput.click(); } });
 		}
+
 		_bindUploads() {
+            // Standard Uploads
 			if (this.folderInput) this.folderInput.onchange = (e) => this._handleUploadAppend(e, true, "");
 			if (this.filesInput) this.filesInput.onchange = (e) => this._handleUploadAppend(e, false, "");
 			if (this.contextUploadInput) { this.contextUploadInput.onchange = (e) => { this._handleUploadAppend(e, false, this.currentContextUploadPath); this.currentContextUploadPath = ""; }; }
-			if (this.btnOpenFolder && this.projectOpenInput) {
-				this.btnOpenFolder.onclick = () => { this.projectOpenInput.value = ""; this.projectOpenInput.click(); };
-				this.projectOpenInput.onchange = async (e) => {
-					const files = Array.from(e.target.files); if (files.length === 0) return;
-					if (!confirm(`Warning: This will DELETE all current files and replace them with the contents of "${files[0].webkitRelativePath.split('/')[0]}".\n\nContinue?`)) { e.target.value = ""; return; }
-					Object.keys(this.vfs.files).forEach(k => delete this.vfs.files[k]);
-					const uploadedPaths = [];
-					for (const file of files) {
-						let relPath = file.webkitRelativePath.split('/').slice(1).join('/') || file.name;
-						if (relPath.startsWith('.git/') || relPath.includes('/.git/') || relPath === '.DS_Store') continue;
-						let content = this._isBinary(file) ? await this._fileToBase64(file) : await file.text();
-						this.vfs.files[relPath.replace(/^\/+/, '')] = content; uploadedPaths.push(relPath);
-					}
-					this.vfs.notify(); this._emitHistoryEvent('project_imported', `User opened folder. Imported ${uploadedPaths.length} files.`); e.target.value = "";
+			
+            // ★ Backup Restore Logic (Replaced Folder Open)
+			if (this.btnImportBackup && this.importBackupInput) {
+				this.btnImportBackup.onclick = () => { 
+                    this.importBackupInput.value = ""; 
+                    this.importBackupInput.click(); 
+                };
+				this.importBackupInput.onchange = async (e) => {
+					const file = e.target.files[0]; 
+                    if (!file) return;
+                    
+					if (!confirm(`CAUTION: This will ERASE all current files and restore from "${file.name}".\n\nContinue?`)) { 
+                        e.target.value = ""; return; 
+                    }
+                    
+                    try {
+                        // Load ZIP
+                        const zip = await JSZip.loadAsync(file);
+                        
+                        // Clear VFS
+                        Object.keys(this.vfs.files).forEach(k => delete this.vfs.files[k]);
+                        
+                        const restoredPaths = [];
+                        const promises = [];
+
+                        zip.forEach((relativePath, zipEntry) => {
+                            if (zipEntry.dir) return;
+                            // Ignore system files
+                            if (relativePath.startsWith('__MACOSX') || relativePath.includes('.DS_Store')) return;
+
+                            promises.push((async () => {
+                                // Determine content type
+                                const isBinary = this._isBinary({ name: relativePath, type: '' });
+                                let content;
+                                
+                                if (isBinary) {
+                                    // Binary: Convert to Data URI with MIME type
+                                    const base64 = await zipEntry.async("base64");
+                                    const mime = this._guessMimeType(relativePath);
+                                    content = `data:${mime};base64,${base64}`;
+                                } else {
+                                    // Text: Load as string
+                                    content = await zipEntry.async("string");
+                                }
+                                
+                                const cleanPath = relativePath.replace(/^\/+/, '');
+                                this.vfs.files[cleanPath] = content;
+                                restoredPaths.push(cleanPath);
+                            })());
+                        });
+
+                        await Promise.all(promises);
+                        this.vfs.notify();
+                        this._emitHistoryEvent('project_imported', `Restored backup: ${file.name} (${restoredPaths.length} files).`);
+                        alert(`Restore Complete: ${restoredPaths.length} files loaded.`);
+
+                    } catch (err) {
+                        console.error(err);
+                        alert(`Restore Failed: ${err.message}`);
+                    }
+					e.target.value = "";
 				};
 			}
+
+            // Sidebar Drag & Drop
 			if (this.sidebar) {
 				['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => { this.sidebar.addEventListener(eventName, (e) => { e.preventDefault(); e.stopPropagation(); }, false); });
 				this.sidebar.addEventListener('dragover', (e) => { e.dataTransfer.dropEffect = 'copy'; this.sidebar.classList.add('bg-gray-700'); });
@@ -59,6 +135,7 @@
 				});
 			}
 		}
+
 		_traverseFileTree(item, path) {
 			return new Promise((resolve) => {
 				path = path || "";
@@ -76,6 +153,7 @@
 				}
 			});
 		}
+
 		async _batchWriteFiles(files) {
 			const uploadedPaths = [];
 			for (const file of files) {
@@ -88,6 +166,7 @@
 			}
 			if (uploadedPaths.length > 0) this._emitHistoryEvent('file_created', `User dropped files/folders:\n${uploadedPaths.slice(0, 5).join(', ')}${uploadedPaths.length > 5 ? '...' : ''}`);
 		}
+
 		async _handleUploadAppend(e, isFolder, targetDir = "") {
 			const files = Array.from(e.target.files); const uploadedPaths = [];
 			for (const file of files) {
@@ -99,12 +178,28 @@
 			if (uploadedPaths.length > 0) this._emitHistoryEvent('file_created', `User uploaded files to "${targetDir || 'root'}":\nFiles: ${uploadedPaths.slice(0, 5).join(', ')}${uploadedPaths.length > 5 ? '...' : ''}`);
 			e.target.value = "";
 		}
+
 		_isBinary(file) {
-			return file.type.startsWith('image/') || file.type === 'application/pdf' || file.type.includes('zip') || file.type.includes('compressed') ||
-				file.type.startsWith('audio/') || file.type.startsWith('video/') ||
-				file.name.match(/\.(png|jpg|jpeg|gif|webp|svg|ico|bmp|pdf|woff|woff2|ttf|eot|otf|zip|tar|gz|7z|rar|mp3|wav|mp4|webm|ogg)$/i);
+			const binaryExts = /\.(png|jpg|jpeg|gif|webp|svg|ico|bmp|pdf|woff|woff2|ttf|eot|otf|zip|tar|gz|7z|rar|mp3|wav|mp4|webm|ogg)$/i;
+            if (file.type && (file.type.startsWith('image/') || file.type.startsWith('audio/') || file.type.startsWith('video/') || file.type === 'application/pdf')) return true;
+			return !!file.name.match(binaryExts);
 		}
+
+        _guessMimeType(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const map = {
+                'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'gif': 'image/gif', 'webp': 'image/webp', 'svg': 'image/svg+xml', 'ico': 'image/x-icon',
+                'pdf': 'application/pdf',
+                'mp3': 'audio/mpeg', 'wav': 'audio/wav',
+                'mp4': 'video/mp4', 'webm': 'video/webm',
+                'zip': 'application/zip',
+                'woff': 'font/woff', 'woff2': 'font/woff2', 'ttf': 'font/ttf', 'otf': 'font/otf'
+            };
+            return map[ext] || 'application/octet-stream';
+        }
+
 		_fileToBase64(file) { return new Promise((r, j) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = () => r(reader.result); reader.onerror = j; }); }
+
 		_downloadFile(path, content) {
 			let blob;
 			if (content.startsWith('data:')) {
@@ -116,7 +211,9 @@
 			const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = path.split('/').pop();
 			document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
 		}
+
 		_emitHistoryEvent(type, description) { if (this.events['history_event']) this.events['history_event'](type, description); }
+
 		_initResizer() {
 			if (!this.resizer || !this.sidebar) return; const overlay = document.getElementById(DOM.resizeOverlay); let isResizing = false;
 			const start = (e) => { isResizing = true; document.body.style.cursor = 'col-resize'; this.resizer.classList.add('resizing'); if (overlay) overlay.classList.remove('hidden'); if (this.previewFrame) this.previewFrame.style.pointerEvents = 'none'; e.preventDefault(); };

@@ -217,22 +217,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 	ui.chat.on('stop', () => { engine.stop(); ui.chat.setProcessing(false); });
 	ui.chat.on('clear', () => { if (confirm("Clear chat history?")) { state.history = []; ui.chat.renderHistory([]); triggerAutoSave(); } });
 
-	const btnDownload = document.getElementById(DOM.btnDownload);
-	if (btnDownload) btnDownload.onclick = async () => {
-		if (typeof JSZip === 'undefined') { alert('JSZip not loaded'); return; }
-		const zip = new JSZip();
-		vfs.listFiles().forEach(path => {
-			if (!path.startsWith('.sample/')) {
-				const content = vfs.readFile(path);
-				if (content.startsWith('data:')) zip.file(path, content.split(',')[1], { base64: true });
-				else zip.file(path, content);
-			}
-		});
-		const blob = await zip.generateAsync({ type: 'blob' });
-		const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    const btnDownload = document.getElementById(DOM.btnDownload);
+    if (btnDownload) btnDownload.onclick = async () => {
+        if (typeof JSZip === 'undefined') { alert('JSZip not loaded'); return; }
+        const zip = new JSZip();
+        
+        // 既存のZIP作成ロジック (DataURIのハンドリング含む)
+        vfs.listFiles().forEach(path => {
+            if (!path.startsWith('.sample/')) {
+                const content = vfs.readFile(path);
+                if (content.startsWith('data:')) {
+                    // "data:image/png;base64,..." -> Base64部分だけ抽出
+                    zip.file(path, content.split(',')[1], { base64: true });
+                } else {
+                    zip.file(path, content);
+                }
+            }
+        });
+
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const a = document.createElement('a'); 
+        a.href = URL.createObjectURL(blob);
+        
+        // 【変更】拡張子を .bk に統一
         const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-		a.download = `metaos_system_${timestamp}.zip`; a.click();
-	};
+        a.download = `metaos_backup_${timestamp}.bk`; 
+        
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 100);
+    };
 
 	const btnSaveKey = document.getElementById(DOM.btnSaveKey);
 	if (btnSaveKey) btnSaveKey.onclick = () => {
