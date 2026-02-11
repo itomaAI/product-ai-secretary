@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 	App.Tools.registerNavTools(registry, vfs);
 	App.Tools.registerUITools(registry, ui);
 	if (App.Tools.registerBasicTools) App.Tools.registerBasicTools(registry);
+	if (App.Tools.registerSearchTools) App.Tools.registerSearchTools(registry, vfs);
 
 	// --- 5. Initialize Engine (Logic) ---
 	let apiKey = localStorage.getItem('metaforge_api_key') || '';

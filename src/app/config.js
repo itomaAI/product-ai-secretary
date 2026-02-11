@@ -205,6 +205,20 @@ Attributes:
     - new_path: Destination path.
 </define_tag>
 
+<define_tag name="search">
+Searches for files containing specific text or pattern.
+Useful for finding information in documents or locating code definitions.
+Attributes:
+    - query: The text or regex pattern to search for.
+    - path (optional): The directory to start searching from. Defaults to root.
+    - include (optional): Comma-separated list of file extensions to search (e.g., ".md,.txt,.js").
+    - context (optional): Number of lines to show before and after the match (default: 2).
+    - regex (optional): "true" or "false" (default).
+Notes:
+    - Use this to find knowledge in "data/notes/" or code definitions in "src/".
+    - The system will pause execution to avoid freezing the browser during large searches.
+</define_tag>
+
 <define_tag name="list_files">
 Lists files in the Virtual File System.
 Attributes:
