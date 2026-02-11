@@ -37,9 +37,25 @@
 			this.isRunning = true;
 			this.abortController = new AbortController();
 			const Signal = global.REAL.Signal;
+
 			let currentSignal = Signal.CONTINUE;
+			let loopCount = 0;
+			const MAX_LOOPS = 3; // ★設定: 自律ループの最大回数を3回に制限
+
 			try {
 				while (currentSignal === Signal.CONTINUE) {
+					// 1. 無限ループ防止チェック
+					if (loopCount >= MAX_LOOPS) {
+						console.warn(`Max autonomous loops (${MAX_LOOPS}) reached. Forcing halt.`);
+						this.state.appendTurn(global.REAL.Role.SYSTEM, `System Alert: Maximum autonomous turn limit (${MAX_LOOPS}) reached. Stopping execution to prevent infinite loops.`, {
+							type: global.REAL.TurnType.ERROR
+						});
+						currentSignal = Signal.HALT;
+						break;
+					}
+					loopCount++;
+
+					// 2. LLM生成
 					const messages = this.projector.createContext(this.state);
 					this._emit('turn_start', {
 						role: global.REAL.Role.MODEL
@@ -52,16 +68,23 @@
 					this.state.appendTurn(global.REAL.Role.MODEL, rawResponse, {
 						type: global.REAL.TurnType.MODEL_THOUGHT
 					});
+
+					// 3. アクション解析
 					const actions = this.parser.parse(rawResponse);
 					if (actions.length === 0) {
 						currentSignal = Signal.HALT;
 						break;
 					}
+
 					this._emit('turn_start', {
 						role: global.REAL.Role.SYSTEM
 					});
+
+					// 4. ツール実行 & シグナル決定
 					const results = [];
 					let dominantSignal = Signal.CONTINUE;
+					let hasError = false; // ★追加: エラー発生フラグ
+
 					for (const action of actions) {
 						const {
 							result,
@@ -71,9 +94,30 @@
 							actionType: action.type,
 							output: result
 						});
+
+						// エラーチェック (Registryが error: true を返した場合)
+						if (result && result.error) {
+							hasError = true;
+						}
+
+						// シグナルの優先順位判定 (TERMINATE > HALT > CONTINUE)
 						if (signal === Signal.TERMINATE) dominantSignal = Signal.TERMINATE;
 						else if (signal === Signal.HALT && dominantSignal !== Signal.TERMINATE) dominantSignal = Signal.HALT;
 					}
+
+					// ★追加: エラー時のFinishキャンセル (Error-Driven Continuation)
+					// エラーが発生しているのに終了しようとした場合、強制的に継続させる
+					if (hasError && dominantSignal === Signal.TERMINATE) {
+						dominantSignal = Signal.CONTINUE;
+						results.push({
+							actionType: 'system_override',
+							output: {
+								log: "System Notice: <finish> was cancelled because a tool execution failed. Please analyze the error and try again.",
+								ui: "⚠️ Auto-correction: Finish cancelled due to error."
+							}
+						});
+					}
+
 					this.state.appendTurn(global.REAL.Role.SYSTEM, results, {
 						type: global.REAL.TurnType.TOOL_EXECUTION
 					});
