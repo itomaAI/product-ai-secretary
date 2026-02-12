@@ -61,12 +61,6 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
             padding: 4px 0;
         }
-
-        /* Mobile Drawer Transitions */
-        .slide-panel { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .slide-closed-left { transform: translateX(-100%); }
-        .slide-closed-right { transform: translateX(100%); }
-        .slide-open { transform: translateX(0); }
         
         /* Safe Area for iPhone Home Indicator */
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
@@ -95,7 +89,7 @@
         <div id="mobile-overlay" class="fixed inset-0 bg-black/60 z-30 hidden md:hidden backdrop-blur-[2px] transition-opacity"></div>
 
         <!-- 1. Left Sidebar (Drawer on Mobile z-40) -->
-        <div id="sidebar" class="bg-gray-800 flex flex-col shrink-0 md:relative fixed inset-y-0 left-0 z-40 w-[280px] md:w-[250px] transform -translate-x-full md:translate-x-0 slide-panel border-r border-gray-700 shadow-2xl md:shadow-none h-full pt-12 md:pt-0">
+        <div id="sidebar" class="bg-gray-800 flex flex-col shrink-0 md:relative fixed inset-y-0 left-0 z-40 w-[280px] md:w-[250px] transition-transform duration-300 -translate-x-full md:translate-x-0 border-r border-gray-700 shadow-2xl md:shadow-none h-full pt-12 md:pt-0">
             
             <!-- Controls -->
             <div class="h-10 bg-gray-900 border-b border-gray-700 flex items-center justify-between px-3 shrink-0 relative group">
@@ -189,7 +183,7 @@
             </div>
             
             <!-- Code Editor Overlay (z-30) inside Relative Center -->
-            <div id="editor-overlay" class="absolute inset-0 bg-gray-900 hidden z-30 flex flex-col">
+            <div id="editor-overlay" class="absolute inset-0 bg-gray-900 hidden z-30 flex flex-col pt-12 md:pt-0">
                 <div class="h-9 bg-gray-800 flex justify-between items-center px-4 border-b border-gray-700 shrink-0">
                     <div class="flex items-center gap-2">
                         <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
@@ -204,8 +198,8 @@
             </div>
 
             <!-- Media Viewer Overlay (z-40) -->
-            <div id="media-overlay" class="absolute inset-0 bg-gray-900 bg-opacity-95 hidden z-40 flex flex-col items-center justify-center backdrop-blur-sm">
-                <div class="absolute top-0 left-0 right-0 h-10 bg-gray-800/80 flex justify-between items-center px-4 border-b border-gray-700">
+            <div id="media-overlay" class="absolute inset-0 bg-gray-900 bg-opacity-95 hidden z-40 flex flex-col items-center justify-center backdrop-blur-sm pt-12 md:pt-0">
+                <div class="absolute top-0 left-0 right-0 h-10 bg-gray-800/80 flex justify-between items-center px-4 border-b border-gray-700 pt-12 md:pt-0">
                     <span id="media-filename" class="text-xs font-mono text-gray-300">image.png</span>
                     <button id="btn-close-media" class="text-gray-400 hover:text-white text-lg leading-none">×</button>
                 </div>
@@ -217,7 +211,7 @@
         <div id="chat-resizer" class="resizer hidden md:block"></div>
 
         <!-- 3. Right Sidebar (Chat) (Drawer on Mobile z-40) -->
-        <div id="chat-panel" class="bg-gray-800 flex flex-col shrink-0 md:relative fixed inset-y-0 right-0 z-40 w-full sm:w-96 md:w-[400px] transform translate-x-full md:translate-x-0 slide-panel border-l border-gray-700 shadow-2xl md:shadow-none h-full pt-12 md:pt-0">
+        <div id="chat-panel" class="bg-gray-800 flex flex-col shrink-0 md:relative fixed inset-y-0 right-0 z-40 w-full sm:w-96 md:w-[400px] transition-transform duration-300 translate-x-full md:translate-x-0 border-l border-gray-700 shadow-2xl md:shadow-none h-full pt-12 md:pt-0">
              <div class="h-10 border-b border-gray-700 flex items-center justify-between px-3 bg-gray-800 shrink-0">
                 <div class="flex items-center gap-2">
                     <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Secretary AI</span>

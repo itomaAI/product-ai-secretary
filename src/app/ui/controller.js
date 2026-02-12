@@ -236,25 +236,38 @@
 				else mobileOverlay.classList.add('hidden');
 			};
 
+			// Files Tab: 左からスライドイン
 			mobileNavFiles.addEventListener('click', () => {
 				setActive(mobileNavFiles);
-				sidebar.classList.remove('slide-closed-left');
-				sidebar.classList.add('slide-open');
-				chatPanel.classList.remove('slide-open');
-				chatPanel.classList.add('slide-closed-right');
+
+				// Open Sidebar
+				sidebar.classList.remove('-translate-x-full');
+				sidebar.classList.add('translate-x-0');
+
+				// Close Chat
+				chatPanel.classList.remove('translate-x-0');
+				chatPanel.classList.add('translate-x-full');
+
 				toggleOverlay(true);
 			});
 
+			// View Tab: 全て閉じる
 			mobileNavView.addEventListener('click', () => {
 				this._closeMobileDrawers();
 			});
 
+			// Chat Tab: 右からスライドイン
 			mobileNavChat.addEventListener('click', () => {
 				setActive(mobileNavChat);
-				chatPanel.classList.remove('slide-closed-right');
-				chatPanel.classList.add('slide-open');
-				sidebar.classList.remove('slide-open');
-				sidebar.classList.add('slide-closed-left');
+
+				// Close Sidebar
+				sidebar.classList.remove('translate-x-0');
+				sidebar.classList.add('-translate-x-full');
+
+				// Open Chat
+				chatPanel.classList.remove('translate-x-full');
+				chatPanel.classList.add('translate-x-0');
+
 				toggleOverlay(true);
 			});
 
@@ -276,10 +289,14 @@
 			} = this.els;
 			if (!sidebar || !chatPanel) return;
 
-			sidebar.classList.remove('slide-open');
-			sidebar.classList.add('slide-closed-left');
-			chatPanel.classList.remove('slide-open');
-			chatPanel.classList.add('slide-closed-right');
+			// Close Sidebar (戻す)
+			sidebar.classList.remove('translate-x-0');
+			sidebar.classList.add('-translate-x-full');
+
+			// Close Chat (戻す)
+			chatPanel.classList.remove('translate-x-0');
+			chatPanel.classList.add('translate-x-full');
+
 			if (mobileOverlay) mobileOverlay.classList.add('hidden');
 
 			if (mobileNavView) {
