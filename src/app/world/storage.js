@@ -1,3 +1,5 @@
+// src/app/world/storage.js
+
 (function(global) {
 	global.App = global.App || {};
 	global.App.World = global.App.World || {};
@@ -7,11 +9,11 @@
 			this.storeName = storeName;
 			this.db = null;
 			this.initPromise = this._initDB();
-			this.currentSystemKey = 'metaos_current_system'; // Key for the active state
+			this.currentSystemKey = 'metaos_current_system';
 		}
 		_initDB() {
 			return new Promise((resolve, reject) => {
-				const request = indexedDB.open(this.dbName, 2); // Bump version to 2
+				const request = indexedDB.open(this.dbName, 2);
 				request.onerror = (e) => reject(e.target.error);
 				request.onsuccess = (e) => {
 					this.db = e.target.result;
@@ -19,7 +21,6 @@
 				};
 				request.onupgradeneeded = (e) => {
 					const db = e.target.result;
-					// Store for historical snapshots
 					if (!db.objectStoreNames.contains(this.storeName)) {
 						const store = db.createObjectStore(this.storeName, {
 							keyPath: 'id'
@@ -28,7 +29,6 @@
 							unique: false
 						});
 					}
-					// Store for the single active system state
 					if (!db.objectStoreNames.contains('system_state')) {
 						db.createObjectStore('system_state');
 					}
@@ -38,8 +38,6 @@
 		async ready() {
 			await this.initPromise;
 		}
-
-		// --- Active State Management ---
 
 		async saveSystemState(vfsFiles, stateSnapshot) {
 			await this.ready();
@@ -65,8 +63,6 @@
 				req.onerror = () => reject(req.error);
 			});
 		}
-
-		// --- Snapshot / Time Machine Management ---
 
 		async createSnapshot(label, vfsFiles, stateSnapshot) {
 			await this.ready();
@@ -136,9 +132,20 @@
 			});
 		}
 
+		// ★ 追加: 全削除機能
+		async deleteAllSnapshots() {
+			await this.ready();
+			return new Promise((resolve, reject) => {
+				const tx = this.db.transaction([this.storeName], 'readwrite');
+				const req = tx.objectStore(this.storeName).clear();
+				req.onsuccess = () => resolve();
+				req.onerror = () => reject(req.error);
+			});
+		}
+
 		async pruneSnapshots() {
 			await this.ready();
-			const list = await this.listSnapshots(); // Sorted Newest -> Oldest
+			const list = await this.listSnapshots();
 			const now = Date.now();
 			const oneDay = 24 * 60 * 60 * 1000;
 			const twoWeeks = 14 * oneDay;
@@ -147,30 +154,16 @@
 			const dayBuckets = {};
 
 			for (const snap of list) {
-				// Skip manual backups? Maybe check label? 
-				// User said "Auto backup 30 mins...". 
-				// If I prune manual backups, user might get mad.
-				// Let's assume we prune based on time regardless, OR filter by label 'Auto Backup'.
-				// User requirement: "Backup 30 mins... capacity...". Usually implies automated ones.
-				// I'll check label. If it starts with "Auto Backup", prune.
-				// If it's a manual one (user typed label), keep it? 
-				// The user didn't specify, but safer to keep manual ones.
-
 				if (!snap.label || !snap.label.startsWith('Auto Backup')) continue;
 
 				const age = now - snap.timestamp;
-
-				// 1. Delete if older than 2 weeks
 				if (age > twoWeeks) {
 					toDelete.push(snap.id);
 					continue;
 				}
-
-				// 2. If older than 1 day, keep only one per day
 				if (age > oneDay) {
 					const dateKey = new Date(snap.timestamp).toDateString();
 					if (dayBuckets[dateKey]) {
-						// Already kept the newest for this day
 						toDelete.push(snap.id);
 					} else {
 						dayBuckets[dateKey] = true;
@@ -180,8 +173,6 @@
 
 			if (toDelete.length > 0) {
 				console.log(`[Storage] Pruning ${toDelete.length} old auto-backups.`);
-				// Sequential delete to avoid transaction overload? Or parallel?
-				// IndexedDB transactions are cheap.
 				await Promise.all(toDelete.map(id => this.deleteSnapshot(id)));
 			}
 		}

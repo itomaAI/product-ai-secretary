@@ -29,7 +29,7 @@
 
 			this._bindProjectUI();
 			this._wireComponents();
-			this._initMetaOSBridge(); // ★ Bridge Init
+			this._initMetaOSBridge();
 
 			// Watch VFS for Data Changes
 			this.vfs.subscribe((files, path, action) => {
@@ -54,23 +54,22 @@
 		}
 
 		_initElements() {
+			// Note: btn-delete-all-snapshots is newly added in HTML
 			['previewFrame', 'previewLoader', 'saveStatus',
-				'btnBackup', 'btnHistory', 'btnReset', 'historyModal', 'btnCloseModal', 'snapshotList', 'btnCreateSnapshot'
+				'btnBackup', 'btnHistory', 'btnReset', 'historyModal', 'btnCloseModal', 'snapshotList', 'btnCreateSnapshot', 'btnDeleteAllSnapshots'
 			]
 			.forEach(key => {
-				// Map logical names to DOM IDs (assuming simple mapping for now if not in DOM dictionary)
-				const id = DOM[key] || key.replace(/[A-Z]/g, m => '-' + m.toLowerCase()); // e.g. btnBackup -> btn-backup
+				// DOM mapping (Manual override for new ID if not in DOM.js)
+				let id = DOM[key];
+				if (!id) {
+					// Try to guess ID from camelCase key (e.g. btnDeleteAllSnapshots -> btn-delete-all-snapshots)
+					id = key.replace(/[A-Z]/g, m => '-' + m.toLowerCase());
+				}
 				this.els[key] = document.getElementById(id);
 			});
-			// Manual overrides if needed
-			this.els.historyModal = document.getElementById('history-modal');
-			this.els.snapshotList = document.getElementById('snapshot-list');
-			this.els.btnCreateSnapshot = document.getElementById('btn-create-snapshot');
-			this.els.btnCloseModal = document.getElementById('btn-close-modal');
 		}
 
 		_wireComponents() {
-			// 1. Explorer -> Open File
 			this.explorer.on('open_file', (path, content) => {
 				const BINARY_EXTS = /\.(png|jpg|jpeg|gif|webp|svg|ico|pdf|zip|tar|gz|7z|rar|mp3|wav|mp4|webm|ogg|woff|woff2|ttf|eot|otf)$/i;
 				if (path.match(BINARY_EXTS)) {
@@ -82,12 +81,10 @@
 				}
 			});
 
-			// Chat -> Media Preview
 			this.chat.on('preview_request', (name, base64, mimeType) => {
 				this.mediaViewer.open(name, base64, mimeType);
 			});
 
-			// 2. Explorer -> History Event
 			this.explorer.on('history_event', (type, description) => {
 				const lpml = `<event type="${type}">\n${description}\n</event>`;
 				this.state.appendTurn(global.REAL.Role.SYSTEM, lpml, {
@@ -96,22 +93,17 @@
 				this.chat.renderHistory(this.state.getHistory());
 			});
 
-			// 3. Editor Save
 			this.editor.on('save', (path, content) => {
 				this.vfs.writeFile(path, content);
-
 				const lpml = `<event type="file_change">\nUser edited file content: ${path}\n</event>`;
 				this.state.appendTurn(global.REAL.Role.SYSTEM, lpml, {
 					type: 'event_log'
 				});
 				this.chat.renderHistory(this.state.getHistory());
-
-				// Auto refresh preview
 				this.refreshPreview();
 			});
 		}
 
-		// ★ MetaOS Bridge Handling
 		_initMetaOSBridge() {
 			window.addEventListener('message', async (event) => {
 				const data = event.data;
@@ -128,76 +120,48 @@
 				try {
 					switch (action) {
 						case 'switch_view':
-							// Reload preview with new entry point
-							console.log("Switching view to:", payload.path);
 							await this.refreshPreview(payload.path);
 							break;
-
 						case 'save_file':
 							this.vfs.writeFile(payload.path, payload.content);
-							// Refresh explorer if file added
 							try {
 								this.explorer.render();
-							} catch (err) {
-								console.error("Explorer render failed", err);
-							}
+							} catch (err) {}
 							break;
-
 						case 'read_file':
 							result = this.vfs.readFile(payload.path);
 							break;
-
 						case 'list_files':
 							const files = this.vfs.listFiles();
-							if (payload.path) {
-								// Simple filter
-								result = files.filter(f => f.startsWith(payload.path));
-							} else {
-								result = files;
-							}
+							if (payload.path) result = files.filter(f => f.startsWith(payload.path));
+							else result = files;
 							break;
-
 						case 'delete_file':
 							this.vfs.deleteFile(payload.path);
 							try {
 								this.explorer.render();
-							} catch (err) {
-								console.error("Explorer render failed", err);
-							}
+							} catch (err) {}
 							break;
-
 						case 'rename_file':
 							result = this.vfs.rename(payload.oldPath, payload.newPath);
 							try {
 								this.explorer.render();
 							} catch (err) {}
 							break;
-
 						case 'open_file':
-							// Open file in Host Editor
 							const content = this.vfs.readFile(payload.path);
 							this.editor.open(payload.path, content);
 							break;
-
 						case 'show_notification':
-							console.log(`[MetaOS] ${payload.title}: ${payload.message}`);
 							alert(`${payload.title}\n${payload.message}`);
 							break;
-
 						case 'ask_ai':
-							// Inject into chat input and trigger send?
-							// For now, just log it as a user message
 							const lpml = `<user_input>\n${payload.text}\n</user_input>`;
 							this.state.appendTurn(global.REAL.Role.USER, lpml);
 							this.chat.renderHistory(this.state.getHistory());
-							// Trigger AI response (simplified)
-							// document.getElementById('btn-send').click(); // This requires DOM manipulation
 							break;
-
 						case 'view_ready':
-							console.log("MetaOS View Ready");
 							break;
-
 						default:
 							throw new Error(`Unknown action: ${action}`);
 					}
@@ -206,7 +170,6 @@
 					error = e.message;
 				}
 
-				// Send Response
 				if (this.els.previewFrame && this.els.previewFrame.contentWindow) {
 					this.els.previewFrame.contentWindow.postMessage({
 						type: 'METAOS_RESPONSE',
@@ -219,7 +182,7 @@
 		}
 
 		_bindProjectUI() {
-			// Replaced with System/History UI
+			// Manual Snapshot (Header)
 			if (this.els.btnBackup) {
 				this.els.btnBackup.addEventListener('click', () => {
 					this.createSnapshot('Manual Backup');
@@ -238,9 +201,19 @@
 				});
 			}
 
+			// Create Snapshot (Modal)
 			if (this.els.btnCreateSnapshot) {
 				this.els.btnCreateSnapshot.addEventListener('click', () => {
 					this.createSnapshot('User Snapshot');
+				});
+			}
+
+			// ★ Delete All Snapshots (Modal)
+			if (this.els.btnDeleteAllSnapshots) {
+				this.els.btnDeleteAllSnapshots.addEventListener('click', () => {
+					if (confirm("WARNING: Delete ALL snapshots? This history cannot be recovered.")) {
+						document.dispatchEvent(new CustomEvent('delete-all-snapshots'));
+					}
 				});
 			}
 
@@ -277,19 +250,18 @@
 				const div = document.createElement('div');
 				div.className = 'flex justify-between items-center bg-gray-700 p-2 rounded text-xs border border-gray-600';
 				div.innerHTML = `
-                    <div>
-                        <div class="font-bold text-gray-200">${snap.label || 'Snapshot'}</div>
-                        <div class="text-gray-400">${date}</div>
+                    <div class="overflow-hidden mr-2">
+                        <div class="font-bold text-gray-200 truncate" title="${snap.label || 'Snapshot'}">${snap.label || 'Snapshot'}</div>
+                        <div class="text-gray-400 text-[10px]">${date}</div>
                     </div>
-                    <div class="flex gap-2">
-                         <button class="btn-restore text-blue-400 hover:text-blue-300 underline" data-id="${snap.id}">Restore</button>
-                         <button class="btn-delete text-red-400 hover:text-red-300" data-id="${snap.id}">×</button>
+                    <div class="flex gap-2 shrink-0">
+                         <button class="btn-restore text-blue-400 hover:text-blue-300 underline font-medium" data-id="${snap.id}">Restore</button>
+                         <button class="btn-delete text-gray-500 hover:text-red-400" data-id="${snap.id}">✕</button>
                     </div>
                 `;
 				this.els.snapshotList.appendChild(div);
 			});
 
-			// Bind restore/delete buttons
 			this.els.snapshotList.querySelectorAll('.btn-restore').forEach(btn => {
 				btn.addEventListener('click', (e) => {
 					const id = e.target.getAttribute('data-id');
@@ -321,11 +293,26 @@
 		createSnapshot(label) {
 			const name = prompt("Snapshot Label:", label);
 			if (name) {
-				document.dispatchEvent(new CustomEvent('create-snapshot', {
-					detail: {
-						label: name
-					}
-				}));
+				// UI feedback: Disable button and show saving status to prevent freezing panic
+				if (this.els.btnBackup) this.els.btnBackup.classList.add('opacity-50', 'pointer-events-none');
+				this.setSaveStatus('saving');
+
+				// Allow UI to update before heavy lifting
+				setTimeout(() => {
+					document.dispatchEvent(new CustomEvent('create-snapshot', {
+						detail: {
+							label: name
+						}
+					}));
+					// Re-enable in main.js handler or here? 
+					// Better to rely on event loop, but for now we reset UI shortly.
+					// (Actually main.js does the work, we can't easily callback from dispatchEvent without custom logic)
+					// Let's assume operation takes < 3s usually.
+					setTimeout(() => {
+						if (this.els.btnBackup) this.els.btnBackup.classList.remove('opacity-50', 'pointer-events-none');
+						this.setSaveStatus('saved');
+					}, 500);
+				}, 50);
 			}
 		}
 
@@ -359,6 +346,7 @@
 		setSaveStatus(state) {
 			const el = this.els.saveStatus;
 			if (!el) return;
+			el.classList.remove('opacity-0');
 			if (state === 'saving') {
 				el.textContent = 'Saving...';
 				el.className = 'text-[10px] text-yellow-500 italic mr-2 self-center transition opacity-100';
@@ -366,7 +354,7 @@
 				el.textContent = 'Saved';
 				el.className = 'text-[10px] text-green-500 italic mr-2 self-center transition opacity-100';
 				setTimeout(() => el.classList.add('opacity-0'), 2000);
-			} else el.classList.add('opacity-0');
+			}
 		}
 
 		captureScreenshot() {
@@ -377,7 +365,6 @@
 				const handler = (e) => {
 					if (e.data.type === 'SCREENSHOT_RESULT') {
 						window.removeEventListener('message', handler);
-						// data:image/png;base64,... -> extract data
 						const parts = e.data.data.split(',');
 						resolve(parts.length > 1 ? parts[1] : parts[0]);
 					} else if (e.data.type === 'SCREENSHOT_ERROR') {

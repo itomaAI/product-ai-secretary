@@ -1,5 +1,6 @@
+// src/app/main.js
+
 document.addEventListener('DOMContentLoaded', async () => {
-	// Shortcuts
 	const {
 		REAL,
 		App
@@ -28,11 +29,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 		LPMLAdapter,
 		MetaForgeProjector
 	} = App.Adapters;
-
-	// Load Basic Tools script (Dynamically or assumed loaded? It's not in HTML!)
-	// Wait, I need to add script tag to index.html for basic_tools.js!
-	// Or just inline it here? No, I created a file.
-	// I must add it to index.html first.
 
 	// --- 1. Initialize Infrastructure ---
 	const storage = new StorageManager();
@@ -67,7 +63,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 	const createLLM = () => new GeminiAdapter(apiKey, Config.MODEL_NAME);
 	const engine = new Engine(state, projector, createLLM(), parser, registry);
 
-	// --- Helper Functions ---
 	const fileToBase64 = (file) => {
 		return new Promise((r, j) => {
 			const reader = new FileReader();
@@ -81,15 +76,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 	let saveDebounceTimer = null;
 
 	const loadSystemData = (payload) => {
-		// Clear VFS
 		Object.keys(vfs.files).forEach(k => delete vfs.files[k]);
-		// Load files
 		Object.assign(vfs.files, payload.files);
-		vfs.notify(); // Trigger file listeners
-		// Load History
-		state.history = payload.state || []; // 'state' in storage is actually chat history
+		vfs.notify();
+		state.history = payload.state || [];
 		ui.chat.renderHistory(state.getHistory());
-
 		ui.refreshPreview();
 	};
 
@@ -101,11 +92,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 				loadSystemData(systemState);
 			} else {
 				console.log("Initializing fresh system...");
-				// Load defaults
 				Object.assign(vfs.files, Config.DEFAULT_FILES);
 				vfs.notify();
 				ui.refreshPreview();
-				// Save initial state
 				await storage.saveSystemState(vfs.files, state.getHistory());
 			}
 		} catch (e) {
@@ -150,19 +139,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 	vfs.subscribe(() => triggerAutoSave());
 
 	// --- Snapshot Event Listeners ---
+
+	// Refactored to be non-blocking for UI
 	document.addEventListener('create-snapshot', async (e) => {
 		const {
 			label
 		} = e.detail;
-		try {
-			await storage.createSnapshot(label, vfs.files, state.getHistory());
-			alert('Snapshot created successfully.');
-			// Refresh list if modal is open
-			ui.renderSnapshotList(await storage.listSnapshots());
-		} catch (err) {
-			console.error(err);
-			alert('Failed to create snapshot.');
-		}
+		// Use setTimeout to allow UI render (spinner) to appear before main thread freezes for serialization
+		setTimeout(async () => {
+			try {
+				await storage.createSnapshot(label, vfs.files, state.getHistory());
+				// Refresh list if modal is open
+				const list = await storage.listSnapshots();
+				ui.renderSnapshotList(list);
+				console.log("Snapshot created");
+			} catch (err) {
+				console.error(err);
+				alert('Failed to create snapshot: ' + err.message);
+			}
+		}, 50);
 	});
 
 	document.addEventListener('request-snapshot-list', async () => {
@@ -177,15 +172,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 		try {
 			const snapshot = await storage.getSnapshot(id);
 			if (snapshot) {
-				// Restore state
-				// Note: We might want to auto-backup current state before restoring?
-				// For now, direct restore.
 				loadSystemData({
 					files: snapshot.files,
 					state: snapshot.state
 				});
-				// Also update the current system state persistence
 				triggerAutoSave();
+				alert("Restored successfully.");
 			}
 		} catch (err) {
 			console.error(err);
@@ -201,33 +193,39 @@ document.addEventListener('DOMContentLoaded', async () => {
 		ui.renderSnapshotList(await storage.listSnapshots());
 	});
 
+	// ★ 追加: 全削除イベントハンドラ
+	document.addEventListener('delete-all-snapshots', async () => {
+		try {
+			await storage.deleteAllSnapshots();
+			ui.renderSnapshotList([]); // Clear list
+			alert("All snapshots deleted.");
+		} catch (e) {
+			console.error(e);
+			alert("Failed to delete snapshots.");
+		}
+	});
+
 	document.addEventListener('system-reset', async () => {
-		// 1. Create safety backup
 		try {
 			await storage.createSnapshot('Pre-Reset Backup', vfs.files, state.getHistory());
 		} catch (e) {
 			console.error("Backup failed", e);
 		}
-
-		// 2. Load Defaults
 		Object.keys(vfs.files).forEach(k => delete vfs.files[k]);
 		Object.assign(vfs.files, Config.DEFAULT_FILES);
 		vfs.notify();
 		state.history = [];
 		ui.chat.renderHistory([]);
 		ui.refreshPreview();
-
-		// 3. Persist
 		await storage.saveSystemState(vfs.files, state.getHistory());
 		alert('System reset complete.');
 	});
 
-	// Auto-Backup Timer (Every 30 mins)
 	setInterval(async () => {
 		try {
 			const timestamp = new Date().toLocaleString();
+			// Silent auto backup
 			await storage.createSnapshot(`Auto Backup (${timestamp})`, vfs.files, state.getHistory());
-			console.log("Auto-backup created.");
 			await storage.pruneSnapshots();
 		} catch (e) {
 			console.error("Auto-backup failed:", e);
@@ -241,7 +239,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 			text
 		});
 		for (const file of files) {
-			// (Simplified file handling for brevity)
 			if (file.type.startsWith('text/') || file.name.match(/\.(js|py|html|json|css|md|txt)$/)) {
 				content.push({
 					text: `<user_attachment name="${file.name}">\n${await file.text()}\n</user_attachment>`
@@ -284,13 +281,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 			return;
 		}
 		const zip = new JSZip();
-
-		// 既存のZIP作成ロジック (DataURIのハンドリング含む)
 		vfs.listFiles().forEach(path => {
 			if (!path.startsWith('.sample/')) {
 				const content = vfs.readFile(path);
 				if (content.startsWith('data:')) {
-					// "data:image/png;base64,..." -> Base64部分だけ抽出
 					zip.file(path, content.split(',')[1], {
 						base64: true
 					});
@@ -299,17 +293,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 				}
 			}
 		});
-
 		const blob = await zip.generateAsync({
 			type: 'blob'
 		});
 		const a = document.createElement('a');
 		a.href = URL.createObjectURL(blob);
-
-		// 【変更】拡張子を .bk に統一
 		const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
 		a.download = `metaos_backup_${timestamp}.bk`;
-
 		a.click();
 		setTimeout(() => URL.revokeObjectURL(a.href), 100);
 	};
