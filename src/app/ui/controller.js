@@ -30,6 +30,7 @@
 			this._bindProjectUI();
 			this._wireComponents();
 			this._initMetaOSBridge();
+			this._bindMobileUI(); // ★ モバイルUI制御の追加
 
 			// Watch VFS for Data Changes
 			this.vfs.subscribe((files, path, action) => {
@@ -54,17 +55,13 @@
 		}
 
 		_initElements() {
-			// Note: btn-delete-all-snapshots is newly added in HTML
 			['previewFrame', 'previewLoader', 'saveStatus',
-				'btnBackup', 'btnHistory', 'btnReset', 'historyModal', 'btnCloseModal', 'snapshotList', 'btnCreateSnapshot', 'btnDeleteAllSnapshots'
+				'btnBackup', 'btnHistory', 'btnReset', 'historyModal', 'btnCloseModal', 'snapshotList', 'btnCreateSnapshot', 'btnDeleteAllSnapshots',
+				'sidebar', 'chatPanel', 'mobileOverlay', 'mobileNavFiles', 'mobileNavView', 'mobileNavChat'
 			]
 			.forEach(key => {
-				// DOM mapping (Manual override for new ID if not in DOM.js)
 				let id = DOM[key];
-				if (!id) {
-					// Try to guess ID from camelCase key (e.g. btnDeleteAllSnapshots -> btn-delete-all-snapshots)
-					id = key.replace(/[A-Z]/g, m => '-' + m.toLowerCase());
-				}
+				if (!id) id = key.replace(/[A-Z]/g, m => '-' + m.toLowerCase());
 				this.els[key] = document.getElementById(id);
 			});
 		}
@@ -79,10 +76,12 @@
 					this.mediaViewer.close();
 					this.editor.open(path, content);
 				}
+				this._closeMobileDrawers(); // ファイルを開いたらドロワーを閉じる
 			});
 
 			this.chat.on('preview_request', (name, base64, mimeType) => {
 				this.mediaViewer.open(name, base64, mimeType);
+				this._closeMobileDrawers();
 			});
 
 			this.explorer.on('history_event', (type, description) => {
@@ -121,6 +120,7 @@
 					switch (action) {
 						case 'switch_view':
 							await this.refreshPreview(payload.path);
+							this._closeMobileDrawers();
 							break;
 						case 'save_file':
 							this.vfs.writeFile(payload.path, payload.content);
@@ -151,6 +151,7 @@
 						case 'open_file':
 							const content = this.vfs.readFile(payload.path);
 							this.editor.open(payload.path, content);
+							this._closeMobileDrawers();
 							break;
 						case 'show_notification':
 							alert(`${payload.title}\n${payload.message}`);
@@ -182,47 +183,114 @@
 		}
 
 		_bindProjectUI() {
-			// Manual Snapshot (Header)
 			if (this.els.btnBackup) {
-				this.els.btnBackup.addEventListener('click', () => {
-					this.createSnapshot('Manual Backup');
-				});
+				this.els.btnBackup.addEventListener('click', () => this.createSnapshot('Manual Backup'));
 			}
-
 			if (this.els.btnHistory) {
-				this.els.btnHistory.addEventListener('click', () => {
-					this.toggleHistoryModal(true);
-				});
+				this.els.btnHistory.addEventListener('click', () => this.toggleHistoryModal(true));
 			}
-
 			if (this.els.btnCloseModal) {
-				this.els.btnCloseModal.addEventListener('click', () => {
-					this.toggleHistoryModal(false);
-				});
+				this.els.btnCloseModal.addEventListener('click', () => this.toggleHistoryModal(false));
 			}
-
-			// Create Snapshot (Modal)
 			if (this.els.btnCreateSnapshot) {
-				this.els.btnCreateSnapshot.addEventListener('click', () => {
-					this.createSnapshot('User Snapshot');
-				});
+				this.els.btnCreateSnapshot.addEventListener('click', () => this.createSnapshot('User Snapshot'));
 			}
-
-			// ★ Delete All Snapshots (Modal)
 			if (this.els.btnDeleteAllSnapshots) {
 				this.els.btnDeleteAllSnapshots.addEventListener('click', () => {
-					if (confirm("WARNING: Delete ALL snapshots? This history cannot be recovered.")) {
+					if (confirm("WARNING: Delete ALL snapshots?")) {
 						document.dispatchEvent(new CustomEvent('delete-all-snapshots'));
 					}
 				});
 			}
-
 			if (this.els.btnReset) {
 				this.els.btnReset.addEventListener('click', () => {
-					if (confirm('WARNING: This will reset MetaOS to factory settings. All data will be lost (a backup will be created). Continue?')) {
+					if (confirm('WARNING: Reset system?')) {
 						document.dispatchEvent(new CustomEvent('system-reset'));
 					}
 				});
+			}
+		}
+
+		_bindMobileUI() {
+			const {
+				sidebar,
+				chatPanel,
+				mobileOverlay,
+				mobileNavFiles,
+				mobileNavView,
+				mobileNavChat
+			} = this.els;
+			if (!mobileNavFiles) return;
+
+			const setActive = (target) => {
+				[mobileNavFiles, mobileNavView, mobileNavChat].forEach(btn => {
+					btn.classList.remove('text-blue-400', 'font-bold', 'bg-gray-700/50');
+					btn.classList.add('text-gray-400');
+				});
+				target.classList.remove('text-gray-400');
+				target.classList.add('text-blue-400', 'font-bold', 'bg-gray-700/50');
+			};
+
+			const toggleOverlay = (show) => {
+				if (show) mobileOverlay.classList.remove('hidden');
+				else mobileOverlay.classList.add('hidden');
+			};
+
+			mobileNavFiles.addEventListener('click', () => {
+				setActive(mobileNavFiles);
+				sidebar.classList.remove('slide-closed-left');
+				sidebar.classList.add('slide-open');
+				chatPanel.classList.remove('slide-open');
+				chatPanel.classList.add('slide-closed-right');
+				toggleOverlay(true);
+			});
+
+			mobileNavView.addEventListener('click', () => {
+				this._closeMobileDrawers();
+			});
+
+			mobileNavChat.addEventListener('click', () => {
+				setActive(mobileNavChat);
+				chatPanel.classList.remove('slide-closed-right');
+				chatPanel.classList.add('slide-open');
+				sidebar.classList.remove('slide-open');
+				sidebar.classList.add('slide-closed-left');
+				toggleOverlay(true);
+			});
+
+			if (mobileOverlay) {
+				mobileOverlay.addEventListener('click', () => {
+					this._closeMobileDrawers();
+				});
+			}
+		}
+
+		_closeMobileDrawers() {
+			const {
+				sidebar,
+				chatPanel,
+				mobileOverlay,
+				mobileNavView,
+				mobileNavFiles,
+				mobileNavChat
+			} = this.els;
+			if (!sidebar || !chatPanel) return;
+
+			sidebar.classList.remove('slide-open');
+			sidebar.classList.add('slide-closed-left');
+			chatPanel.classList.remove('slide-open');
+			chatPanel.classList.add('slide-closed-right');
+			if (mobileOverlay) mobileOverlay.classList.add('hidden');
+
+			if (mobileNavView) {
+				[mobileNavFiles, mobileNavView, mobileNavChat].forEach(btn => {
+					if (btn) {
+						btn.classList.remove('text-blue-400', 'font-bold', 'bg-gray-700/50');
+						btn.classList.add('text-gray-400');
+					}
+				});
+				mobileNavView.classList.remove('text-gray-400');
+				mobileNavView.classList.add('text-blue-400', 'font-bold', 'bg-gray-700/50');
 			}
 		}
 
@@ -239,12 +307,10 @@
 		renderSnapshotList(snapshots) {
 			if (!this.els.snapshotList) return;
 			this.els.snapshotList.innerHTML = '';
-
 			if (snapshots.length === 0) {
 				this.els.snapshotList.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">No snapshots available.</div>';
 				return;
 			}
-
 			snapshots.forEach(snap => {
 				const date = new Date(snap.timestamp).toLocaleString();
 				const div = document.createElement('div');
@@ -261,7 +327,6 @@
                 `;
 				this.els.snapshotList.appendChild(div);
 			});
-
 			this.els.snapshotList.querySelectorAll('.btn-restore').forEach(btn => {
 				btn.addEventListener('click', (e) => {
 					const id = e.target.getAttribute('data-id');
@@ -275,7 +340,6 @@
 					}
 				});
 			});
-
 			this.els.snapshotList.querySelectorAll('.btn-delete').forEach(btn => {
 				btn.addEventListener('click', (e) => {
 					const id = e.target.getAttribute('data-id');
@@ -293,21 +357,14 @@
 		createSnapshot(label) {
 			const name = prompt("Snapshot Label:", label);
 			if (name) {
-				// UI feedback: Disable button and show saving status to prevent freezing panic
 				if (this.els.btnBackup) this.els.btnBackup.classList.add('opacity-50', 'pointer-events-none');
 				this.setSaveStatus('saving');
-
-				// Allow UI to update before heavy lifting
 				setTimeout(() => {
 					document.dispatchEvent(new CustomEvent('create-snapshot', {
 						detail: {
 							label: name
 						}
 					}));
-					// Re-enable in main.js handler or here? 
-					// Better to rely on event loop, but for now we reset UI shortly.
-					// (Actually main.js does the work, we can't easily callback from dispatchEvent without custom logic)
-					// Let's assume operation takes < 3s usually.
 					setTimeout(() => {
 						if (this.els.btnBackup) this.els.btnBackup.classList.remove('opacity-50', 'pointer-events-none');
 						this.setSaveStatus('saved');
@@ -319,7 +376,6 @@
 		async refreshPreview(entryPath = 'index.html') {
 			if (!this.els.previewLoader || !this.els.previewFrame) return;
 			this.els.previewLoader.classList.remove('hidden');
-
 			const loadPromise = new Promise(resolve => {
 				const handler = () => {
 					this.els.previewFrame.removeEventListener('load', handler);
@@ -327,7 +383,6 @@
 				};
 				this.els.previewFrame.addEventListener('load', handler);
 			});
-
 			try {
 				const url = await this.compiler.compile(this.vfs, entryPath);
 				if (url) {
@@ -361,7 +416,6 @@
 			return new Promise((resolve, reject) => {
 				const iframe = this.els.previewFrame;
 				if (!iframe || !iframe.contentWindow) return reject(new Error("No preview frame"));
-
 				const handler = (e) => {
 					if (e.data.type === 'SCREENSHOT_RESULT') {
 						window.removeEventListener('message', handler);
@@ -373,12 +427,10 @@
 					}
 				};
 				window.addEventListener('message', handler);
-
 				setTimeout(() => {
 					window.removeEventListener('message', handler);
 					reject(new Error("Screenshot timeout"));
 				}, 15000);
-
 				iframe.contentWindow.postMessage({
 					action: 'CAPTURE'
 				}, '*');
