@@ -315,7 +315,7 @@
             const list = document.getElementById('note-list');
             list.innerHTML = '';
             if (!notes || notes.length === 0) {
-                 list.innerHTML = \`<li class="text-gray-500 italic">No recent notes.</li>\`;
+                 list.innerHTML = '<li class="text-gray-500 italic">No recent notes.</li>';
                  return;
             }
             notes.forEach(path => {
@@ -506,8 +506,9 @@
 
                 const priorityDot = \`<span class="text-[10px] uppercase font-bold \${priorityColors[task.priority] || 'text-gray-400'} border border-current px-1 rounded">\${task.priority || 'med'}</span>\`;
                 const dueDateDisplay = task.dueDate ? \`<span class="text-xs text-gray-400 flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>\${task.dueDate}</span>\` : '';
+
                 li.innerHTML = \`
-                    <div class="shrink-0 cursor-pointer p-1 -m-1" onclick="toggleTask(\'\${task.id}')">\${checkIcon}</div>
+                    <div class="shrink-0 cursor-pointer p-1 -m-1" onclick="toggleTask('\${task.id}')">\${checkIcon}</div>
                     <div class="flex-1 min-w-0 flex flex-col gap-0.5 cursor-pointer" onclick="App.openTaskModal('\${task.id}')">
                         <div class="flex items-center gap-2">
                             <span class="text-sm text-gray-200 truncate font-medium \${isCompleted ? 'line-through text-gray-500' : ''}">\${task.title}</span>
@@ -687,7 +688,7 @@
             const tree = {};
             filtered.forEach(path => {
                 // Remove 'data/notes/' prefix for cleaner structure
-                const relPath = path.replace(/^data\/notes\//, '');
+                const relPath = path.replace(/^data\\/notes\\//, '');
                 const parts = relPath.split('/');
                 
                 let current = tree;
@@ -901,10 +902,13 @@
     <div id="event-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center hidden z-50 backdrop-blur-sm transition-opacity duration-300">
         <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-2xl w-full max-w-sm transform transition-all scale-100">
             <h3 class="text-lg font-bold mb-4 text-white flex items-center justify-between">
-                <span>Add Event</span>
+                <span id="event-modal-title">Add Event</span>
                 <button onclick="closeEventModal()" class="text-gray-500 hover:text-white">&times;</button>
             </h3>
             
+            <input type="hidden" id="event-id">
+            <input type="hidden" id="event-original-date">
+
             <div class="space-y-3">
                 <div>
                     <label class="text-xs text-gray-400 uppercase font-bold block mb-1">Title</label>
@@ -921,11 +925,19 @@
                         <input type="time" id="event-time" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500 scheme-dark">
                     </div>
                 </div>
+
+                <div>
+                    <label class="text-xs text-gray-400 uppercase font-bold block mb-1">Note</label>
+                    <textarea id="event-note" placeholder="Details..." class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500 placeholder-gray-500 transition-colors h-24 resize-none"></textarea>
+                </div>
             </div>
 
-            <div class="flex justify-end gap-2 mt-6">
-                <button onclick="closeEventModal()" class="px-4 py-2 text-gray-400 hover:text-white transition text-sm font-medium">Cancel</button>
-                <button onclick="saveEvent()" class="px-4 py-2 bg-green-600 hover:bg-green-500 text-white font-bold rounded shadow-lg shadow-green-900/20 transition transform active:scale-95 text-sm">Save Event</button>
+            <div class="flex justify-between gap-2 mt-6">
+                <button id="event-delete-btn" onclick="deleteEvent()" class="px-4 py-2 text-red-400 hover:text-red-300 transition text-sm font-medium hidden">Delete</button>
+                <div class="flex gap-2 ml-auto">
+                    <button onclick="closeEventModal()" class="px-4 py-2 text-gray-400 hover:text-white transition text-sm font-medium">Cancel</button>
+                    <button onclick="saveEvent()" class="px-4 py-2 bg-green-600 hover:bg-green-500 text-white font-bold rounded shadow-lg shadow-green-900/20 transition transform active:scale-95 text-sm">Save</button>
+                </div>
             </div>
         </div>
     </div>
@@ -933,6 +945,7 @@
     <script>
         let currentDate = new Date();
         let eventsCache = {};
+        let currentItems = []; // Store current view items for easy access
 
         async function loadEvents(year, month) {
             const key = \`\${year}-\${String(month + 1).padStart(2, '0')}\`;
@@ -967,6 +980,8 @@
                 await loadEvents(year, month);
                 items = eventsCache[monthKey] || [];
             }
+            
+            currentItems = items; // Update global reference
 
             const firstDay = new Date(year, month, 1);
             const lastDay = new Date(year, month + 1, 0);
@@ -1005,13 +1020,18 @@
                 
                 dayItems.forEach(item => {
                     let colorClass = 'bg-blue-900 text-blue-100'; // Default Event
+                    let onclickAttr = '';
+
                     if (item.type === 'task') {
-                        colorClass = 'bg-green-900 text-green-100 border-l-2 border-green-500';
+                        colorClass = 'bg-green-900 text-green-100 border-l-2 border-green-500 hover:bg-green-800 cursor-pointer';
+                        onclickAttr = \`onclick="event.stopPropagation(); App.openTaskModal('\${item.id}')"\`; 
                     } else {
-                        colorClass = 'bg-blue-900 text-blue-100 border-l-2 border-blue-500';
+                        colorClass = 'bg-blue-900 text-blue-100 border-l-2 border-blue-500 hover:bg-blue-800 cursor-pointer';
+                        // Safe call using ID lookup
+                        onclickAttr = \`onclick="event.stopPropagation(); openEditEventModal('\${item.id}')"\`;
                     }
                     
-                    html += \`<div class="text-[10px] \${colorClass} rounded px-1 py-0.5 truncate cursor-default" title="\${item.title}">
+                    html += \`<div class="text-[10px] \${colorClass} rounded px-1 py-0.5 truncate transition-colors" title="\${item.title}" \${onclickAttr}>
                                 \${item.time ? \`<span class="opacity-75 mr-1">\${item.time}</span>\` : ''}\${item.title}
                              </div>\`;
                 });
@@ -1030,9 +1050,37 @@
         function openEventModal(dateStr) {
             const modal = document.getElementById('event-modal');
             modal.classList.remove('hidden');
+            
+            // Reset for Add
+            document.getElementById('event-modal-title').textContent = "Add Event";
+            document.getElementById('event-id').value = ""; // Clear ID
+            document.getElementById('event-original-date').value = "";
+            document.getElementById('event-title').value = "";
+            document.getElementById('event-note').value = "";
+            document.getElementById('event-delete-btn').classList.add('hidden');
+
             document.getElementById('event-date').value = dateStr || new Date().toISOString().slice(0, 10);
             document.getElementById('event-time').value = new Date().toTimeString().slice(0, 5);
+            
             setTimeout(() => document.getElementById('event-title').focus(), 50);
+        }
+
+        function openEditEventModal(id) {
+            const item = currentItems.find(i => i.id === id);
+            if (!item) return;
+
+            const modal = document.getElementById('event-modal');
+            modal.classList.remove('hidden');
+
+            document.getElementById('event-modal-title').textContent = "Edit Event";
+            document.getElementById('event-id').value = item.id;
+            document.getElementById('event-original-date').value = item.date; // For deletion/move
+            document.getElementById('event-title').value = item.title;
+            document.getElementById('event-date').value = item.date;
+            document.getElementById('event-time').value = item.time || '';
+            document.getElementById('event-note').value = item.note || '';
+            
+            document.getElementById('event-delete-btn').classList.remove('hidden');
         }
 
         function closeEventModal() {
@@ -1040,22 +1088,47 @@
             modal.classList.add('hidden');
             document.getElementById('event-title').value = '';
             document.getElementById('event-time').value = '';
+            document.getElementById('event-note').value = '';
         }
 
         async function saveEvent() {
+            const id = document.getElementById('event-id').value;
             const title = document.getElementById('event-title').value;
             const date = document.getElementById('event-date').value;
             const time = document.getElementById('event-time').value;
+            const note = document.getElementById('event-note').value;
+            const originalDate = document.getElementById('event-original-date').value;
             
             if(!title || !date) return;
             
             if (window.App) {
-                await App.addEvent(title, date, time);
+                if (id) {
+                    // Update
+                    await App.updateEvent(id, {
+                        title, date, time, note, originalDate
+                    });
+                } else {
+                    // Create
+                    await App.addEvent(title, date, time, note);
+                }
             } else {
                 console.error("App logic not loaded");
             }
             closeEventModal();
             renderCalendar();
+        }
+
+        async function deleteEvent() {
+            const id = document.getElementById('event-id').value;
+            const date = document.getElementById('event-original-date').value; // Use original date to find file
+            
+            if (confirm("Are you sure you want to delete this event?")) {
+                if (window.App) {
+                    await App.deleteEvent(id, date);
+                }
+                closeEventModal();
+                renderCalendar();
+            }
         }
 
         // Bridge for clicking a date
@@ -1122,14 +1195,14 @@ window.App = {
         let title = rawTitle;
         
         // Parse Priority: /p high|medium|low
-        const pMatch = title.match(/\\/p\s+(high|medium|low)/i);
+        const pMatch = title.match(/\\/p\\s+(high|medium|low)/i);
         if (pMatch) {
             priority = pMatch[1].toLowerCase();
             title = title.replace(pMatch[0], '');
         }
 
         // Parse Due Date: /due YYYY-MM-DD | today | tomorrow
-        const dMatch = title.match(/\\/due\s+(\S+)/i);
+        const dMatch = title.match(/\\/due\\s+(\\S+)/i);
         if (dMatch) {
             let dVal = dMatch[1];
             const now = new Date();
@@ -1143,7 +1216,7 @@ window.App = {
             }
             
             // Validate YYYY-MM-DD
-            if (dVal.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            if (dVal.match(/^\\d{4}-\\d{2}-\\d{2}\$/)) {
                 dueDate = dVal;
             }
             title = title.replace(dMatch[0], '');
@@ -1201,7 +1274,7 @@ window.App = {
 
     // --- Events ---
 
-    async addEvent(title, date, time = '') {
+    async addEvent(title, date, time = '', note = '') {
         if (!title.trim() || !date) return;
         
         // Determine file path based on event date
@@ -1221,7 +1294,8 @@ window.App = {
             id: Date.now().toString(),
             title: title.trim(),
             date: date,
-            time: time
+            time: time,
+            note: note
         };
         
         events.push(newEvent);
@@ -1237,6 +1311,94 @@ window.App = {
 
         await MetaOS.saveFile(path, JSON.stringify(events, null, 2));
         return newEvent;
+    },
+
+    async updateEvent(id, updates) {
+        // We need to find the event. Since we don't know the month, we might need to search.
+        // HOWEVER, usually updates come from a context where we know the date.
+        // If updates.date is present, we might need to move the event file.
+        
+        // Strategy: We require 'date' in updates OR we assume it's in the current month view?
+        // Better: Search in the month of the OLD date if known, or search recent months.
+        
+        // Ideally, the UI passes the old date or we store it.
+        // For now, let's assume we pass the *original* date in updates or we search the target month.
+        
+        // Wait, if we change the date, we might move months.
+        // Let's implement a simple version that assumes we know the old date.
+        
+        if (!updates.originalDate) {
+             console.error("updateEvent requires originalDate to find the file.");
+             return false;
+        }
+
+        const oldMonthKey = updates.originalDate.slice(0, 7);
+        const path = \`data/events/\${oldMonthKey}.json\`;
+        
+        let events = [];
+        try {
+            const content = await MetaOS.readFile(path);
+            events = JSON.parse(content);
+        } catch (e) {
+            return false;
+        }
+
+        const index = events.findIndex(e => e.id === id);
+        if (index === -1) return false;
+        
+        const oldEvent = events[index];
+        const newEvent = { ...oldEvent, ...updates };
+        delete newEvent.originalDate; // Cleanup
+
+        // Check if month changed
+        const newMonthKey = newEvent.date.slice(0, 7);
+        
+        if (oldMonthKey !== newMonthKey) {
+            // Remove from old file
+            events.splice(index, 1);
+            await MetaOS.saveFile(path, JSON.stringify(events, null, 2));
+            
+            // Add to new file
+            // We can reuse addEvent logic but we want to keep the ID
+            const newPath = \`data/events/\${newMonthKey}.json\`;
+            let newEvents = [];
+            try {
+                const newContent = await MetaOS.readFile(newPath);
+                newEvents = JSON.parse(newContent);
+            } catch (e) {
+                newEvents = [];
+            }
+            newEvents.push(newEvent);
+            newEvents.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+            await MetaOS.saveFile(newPath, JSON.stringify(newEvents, null, 2));
+        } else {
+            // Update in place
+            events[index] = newEvent;
+            events.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+            await MetaOS.saveFile(path, JSON.stringify(events, null, 2));
+        }
+        
+        return true;
+    },
+
+    async deleteEvent(id, date) {
+        const monthKey = date.slice(0, 7);
+        const path = \`data/events/\${monthKey}.json\`;
+        
+        try {
+            const content = await MetaOS.readFile(path);
+            let events = JSON.parse(content);
+            const initLen = events.length;
+            events = events.filter(e => e.id !== id);
+            
+            if (events.length !== initLen) {
+                await MetaOS.saveFile(path, JSON.stringify(events, null, 2));
+                return true;
+            }
+        } catch (e) {
+            return false;
+        }
+        return false;
     },
 
     async getEvents(month = null) {
