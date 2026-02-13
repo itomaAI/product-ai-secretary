@@ -18,6 +18,7 @@
 			this.state = state;
 			this.compiler = compiler;
 			this.els = {};
+			this.events = {}; // イベント保持用
 
 			this._initElements();
 
@@ -30,7 +31,7 @@
 			this._bindProjectUI();
 			this._wireComponents();
 			this._initMetaOSBridge();
-			this._bindMobileUI(); // ★ モバイルUI制御の追加
+			this._bindMobileUI();
 
 			// Watch VFS for Data Changes
 			this.vfs.subscribe((files, path, action) => {
@@ -42,6 +43,10 @@
 					});
 				}
 			});
+		}
+
+		on(event, callback) {
+			this.events[event] = callback;
 		}
 
 		_notifyMetaOS(type, payload) {
@@ -76,7 +81,7 @@
 					this.mediaViewer.close();
 					this.editor.open(path, content);
 				}
-				this._closeMobileDrawers(); // ファイルを開いたらドロワーを閉じる
+				this._closeMobileDrawers();
 			});
 
 			this.chat.on('preview_request', (name, base64, mimeType) => {
@@ -161,6 +166,12 @@
 							this.state.appendTurn(global.REAL.Role.USER, lpml);
 							this.chat.renderHistory(this.state.getHistory());
 							break;
+							// ★ Agent Interface Trigger
+						case 'agent_trigger':
+							if (this.events['ai_request']) {
+								this.events['ai_request'](payload.instruction, payload.options);
+							}
+							break;
 						case 'view_ready':
 							break;
 						default:
@@ -236,38 +247,25 @@
 				else mobileOverlay.classList.add('hidden');
 			};
 
-			// Files Tab: 左からスライドイン
 			mobileNavFiles.addEventListener('click', () => {
 				setActive(mobileNavFiles);
-
-				// Open Sidebar
 				sidebar.classList.remove('-translate-x-full');
 				sidebar.classList.add('translate-x-0');
-
-				// Close Chat
 				chatPanel.classList.remove('translate-x-0');
 				chatPanel.classList.add('translate-x-full');
-
 				toggleOverlay(true);
 			});
 
-			// View Tab: 全て閉じる
 			mobileNavView.addEventListener('click', () => {
 				this._closeMobileDrawers();
 			});
 
-			// Chat Tab: 右からスライドイン
 			mobileNavChat.addEventListener('click', () => {
 				setActive(mobileNavChat);
-
-				// Close Sidebar
 				sidebar.classList.remove('translate-x-0');
 				sidebar.classList.add('-translate-x-full');
-
-				// Open Chat
 				chatPanel.classList.remove('translate-x-full');
 				chatPanel.classList.add('translate-x-0');
-
 				toggleOverlay(true);
 			});
 
@@ -289,11 +287,8 @@
 			} = this.els;
 			if (!sidebar || !chatPanel) return;
 
-			// Close Sidebar (戻す)
 			sidebar.classList.remove('translate-x-0');
 			sidebar.classList.add('-translate-x-full');
-
-			// Close Chat (戻す)
 			chatPanel.classList.remove('translate-x-0');
 			chatPanel.classList.add('translate-x-full');
 
@@ -415,20 +410,6 @@
 			}
 		}
 
-		setSaveStatus(state) {
-			const el = this.els.saveStatus;
-			if (!el) return;
-			el.classList.remove('opacity-0');
-			if (state === 'saving') {
-				el.textContent = 'Saving...';
-				el.className = 'text-[10px] text-yellow-500 italic mr-2 self-center transition opacity-100';
-			} else if (state === 'saved') {
-				el.textContent = 'Saved';
-				el.className = 'text-[10px] text-green-500 italic mr-2 self-center transition opacity-100';
-				setTimeout(() => el.classList.add('opacity-0'), 2000);
-			}
-		}
-
 		captureScreenshot() {
 			return new Promise((resolve, reject) => {
 				const iframe = this.els.previewFrame;
@@ -452,6 +433,20 @@
 					action: 'CAPTURE'
 				}, '*');
 			});
+		}
+
+		setSaveStatus(state) {
+			const el = this.els.saveStatus;
+			if (!el) return;
+			el.classList.remove('opacity-0');
+			if (state === 'saving') {
+				el.textContent = 'Saving...';
+				el.className = 'text-[10px] text-yellow-500 italic mr-2 self-center transition opacity-100';
+			} else if (state === 'saved') {
+				el.textContent = 'Saved';
+				el.className = 'text-[10px] text-green-500 italic mr-2 self-center transition opacity-100';
+				setTimeout(() => el.classList.add('opacity-0'), 2000);
+			}
 		}
 	}
 

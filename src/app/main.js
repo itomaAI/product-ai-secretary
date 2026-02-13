@@ -217,7 +217,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 		alert('System reset complete.');
 	});
 
-	// ★ 修正: 定期バックアップ (setInterval) を削除しました
+	// ★ Agent Interface Listener
+	ui.on('ai_request', async (instruction, options = {}) => {
+		if (engine.isRunning) return; // Busy
+
+		// Reset option
+		if (options.reset) {
+			state.history = [];
+			ui.chat.renderHistory([]);
+		}
+
+		// Context construction
+		let text = `[INTERNAL AGENT TRIGGER]\n${instruction}`;
+		if (options.context) {
+			text += `\n\n[Context Data]\n\`\`\`json\n${JSON.stringify(options.context, null, 2)}\n\`\`\``;
+		}
+
+		const content = [{
+			text: `<user_input>\n${text}\n</user_input>`
+		}];
+
+		// Silent option
+		const meta = {
+			visible: !options.silent
+		};
+
+		engine.llm = createLLM(); // Refresh key just in case
+		try {
+			await engine.injectUserTurn(content, meta);
+		} catch (e) {
+			console.error(e);
+		}
+	});
 
 	ui.chat.on('send', async (text, files) => {
 		ui.chat.setProcessing(true);

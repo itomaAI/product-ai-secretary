@@ -1,5 +1,8 @@
+// src/lib/engine.js
+
 (function(global) {
 	global.REAL = global.REAL || {};
+
 	class Engine {
 		constructor(state, projector, llm, parser, tools) {
 			this.state = state;
@@ -22,16 +25,26 @@
 		_emit(event, data) {
 			if (this.listeners[event]) this.listeners[event].forEach(cb => cb(data));
 		}
-		async injectUserTurn(inputContent) {
-			const turn = this.state.appendTurn(global.REAL.Role.USER, inputContent, {
-				type: global.REAL.TurnType.USER_INPUT
-			});
+
+		/**
+		 * ユーザー入力を注入してループを開始/再開する
+		 * @param {string|Array} inputContent 
+		 * @param {Object} meta - 追加メタデータ (例: { visible: false })
+		 */
+		async injectUserTurn(inputContent, meta = {}) {
+			const turnMeta = {
+				type: global.REAL.TurnType.USER_INPUT,
+				...meta
+			};
+
+			const turn = this.state.appendTurn(global.REAL.Role.USER, inputContent, turnMeta);
 			this._emit('turn_end', {
 				role: global.REAL.Role.USER,
 				turn
 			});
 			await this.run();
 		}
+
 		async run() {
 			if (this.isRunning) return;
 			this.isRunning = true;
@@ -42,7 +55,7 @@
 			let loopCount = 0;
 			const MAX_LOOPS = 1000;
 
-			// ★追加: 前のターンでエラーが発生したかを追跡するフラグ
+			// 前のターンでエラーが発生したかを追跡するフラグ
 			let lastTurnHadError = false;
 
 			try {
@@ -75,18 +88,14 @@
 					// 3. アクション解析
 					const actions = this.parser.parse(rawResponse);
 
-					// ★修正: アクションが無い場合の判定ロジック強化
+					// アクションが無い場合の判定ロジック
 					if (actions.length === 0) {
 						if (lastTurnHadError) {
-							// 前のターンでエラーだったのに、今回何もアクションしなかった場合
-							// システム側から叱咤してループを強制継続させる
+							// リトライ強制
 							const retryMsg = "System: The previous tool execution failed. You MUST retry with a corrected action or fix the error. Do not finish without resolving the issue.";
-
 							this.state.appendTurn(global.REAL.Role.SYSTEM, retryMsg, {
 								type: global.REAL.TurnType.ERROR
 							});
-
-							// UIに反映させるためイベント発火
 							this._emit('turn_end', {
 								role: global.REAL.Role.SYSTEM,
 								results: [{
@@ -96,8 +105,6 @@
 									}
 								}]
 							});
-
-							// フラグをリセットして再試行（無限ループ防止のため、これ以上の空アクションは許容しない設計も可能だが、今回はループ回数制限に委ねる）
 							lastTurnHadError = false;
 							continue;
 						} else {
@@ -114,7 +121,7 @@
 					// 4. ツール実行 & シグナル決定
 					const results = [];
 					let dominantSignal = Signal.CONTINUE;
-					let hasError = false; // 今回のターンのエラー判定
+					let hasError = false;
 
 					for (const action of actions) {
 						const {
@@ -127,18 +134,15 @@
 							output: result
 						});
 
-						// エラー判定: Registryが error: true を返しているかチェック
 						if (result && result.error) {
 							hasError = true;
 						}
 
-						// シグナルの優先順位判定
 						if (signal === Signal.TERMINATE) dominantSignal = Signal.TERMINATE;
 						else if (signal === Signal.HALT && dominantSignal !== Signal.TERMINATE) dominantSignal = Signal.HALT;
 					}
 
-					// ★修正: エラー発生時のFinishキャンセル (Finish無視ロジック)
-					// エラーがあるのに終了しようとした場合、強制的にCONTINUEにする
+					// Finishキャンセルロジック
 					if (hasError && dominantSignal === Signal.TERMINATE) {
 						dominantSignal = Signal.CONTINUE;
 						results.push({
@@ -150,7 +154,6 @@
 						});
 					}
 
-					// 次のループ判定のためにエラー状態を保存
 					lastTurnHadError = hasError;
 
 					this.state.appendTurn(global.REAL.Role.SYSTEM, results, {

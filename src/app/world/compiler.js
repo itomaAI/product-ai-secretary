@@ -1,3 +1,5 @@
+// src/app/world/compiler.js
+
 (function(global) {
 	global.App = global.App || {};
 	global.App.World = global.App.World || {};
@@ -7,22 +9,16 @@
 			this.blobUrls = [];
 		}
 
-		/**
-		 * VFSの状態からプレビュー用のエントリーポイントURLを生成
-		 * @param {VirtualFileSystem} vfs 
-		 * @returns {Promise<string|null>} index.htmlのBlob URL
-		 */
 		async compile(vfs, entryPath = 'index.html') {
-			this.revokeAll(); // メモリリーク防止
+			this.revokeAll();
 
 			const filePaths = vfs.listFiles();
 			const urlMap = {};
 
-			// 1. Assets (HTML以外) のBlob化
 			for (const path of filePaths) {
 				if (path.endsWith('.html')) continue;
 				if (path.startsWith('.sample/')) continue;
-				if (path.startsWith('src/')) continue; // ホストコードは除外（VFSにホストコードが含まれる場合）
+				if (path.startsWith('src/')) continue;
 
 				const content = vfs.readFile(path);
 				const mimeType = this.getMimeType(path);
@@ -42,7 +38,6 @@
 				this.blobUrls.push(url);
 			}
 
-			// 2. HTML の処理 (リンク解決 & スクリプト注入)
 			let entryPointUrl = null;
 
 			for (const path of filePaths) {
@@ -51,8 +46,6 @@
 
 				let htmlContent = vfs.readFile(path);
 				htmlContent = this.processHtmlReferences(htmlContent, urlMap, path);
-
-				// ★ MetaOS Bridge Injection
 				htmlContent = this.injectMetaOSBridge(htmlContent);
 				htmlContent = this.injectScreenshotHelper(htmlContent);
 
@@ -69,13 +62,10 @@
 				}
 			}
 
-			// 指定されたエントリポイントが見つからない場合のフォールバック
 			if (!entryPointUrl) {
-				// index.htmlを探す
 				if (urlMap['index.html']) {
 					entryPointUrl = urlMap['index.html'];
 				} else {
-					// それもなければ最初のHTML
 					const firstHtml = filePaths.find(p => p.endsWith('.html') && !p.startsWith('.sample/'));
 					if (firstHtml) entryPointUrl = urlMap[firstHtml];
 				}
@@ -87,20 +77,13 @@
 		processHtmlReferences(html, urlMap, currentFilePath) {
 			const parser = new DOMParser();
 			const doc = parser.parseFromString(html, 'text/html');
-
-			// Current directory (e.g. "views/tasks.html" -> "views")
 			const currentDir = currentFilePath.includes('/') ? currentFilePath.substring(0, currentFilePath.lastIndexOf('/')) : '';
 
 			const resolvePath = (relPath) => {
-				// 1. Absolute path (from root)
 				if (relPath.startsWith('/')) return relPath.substring(1);
-				// 2. HTTP/HTTPS
 				if (relPath.match(/^https?:\/\//)) return null;
-
-				// 3. Relative path
 				const stack = currentDir ? currentDir.split('/') : [];
 				const parts = relPath.split('/');
-
 				for (const part of parts) {
 					if (part === '.') continue;
 					if (part === '..') {
@@ -116,14 +99,10 @@
 				doc.querySelectorAll(selector).forEach(el => {
 					const val = el.getAttribute(attr);
 					if (!val) return;
-
-					// Try exact match first
 					if (urlMap[val]) {
 						el.setAttribute(attr, urlMap[val]);
 						return;
 					}
-
-					// Try resolved path
 					const resolved = resolvePath(val);
 					if (resolved && urlMap[resolved]) {
 						el.setAttribute(attr, urlMap[resolved]);
@@ -140,7 +119,7 @@
 		}
 
 		injectMetaOSBridge(html) {
-			// MetaOS Client Bridge Code (Minified/Inline)
+			// ★ agent メソッドを追加
 			const script = `
 <script>
 (function(global) {
@@ -148,8 +127,6 @@
     window.addEventListener('message', (event) => {
         const data = event.data;
         if (!data) return;
-
-        // Handle Responses
         if (data.type === 'METAOS_RESPONSE') {
             const { requestId, result, error } = data;
             if (REQUESTS.has(requestId)) {
@@ -159,8 +136,6 @@
                 else resolve(result);
             }
         }
-        
-        // Handle Events from Host
         if (data.type === 'METAOS_EVENT') {
             const evt = new CustomEvent('metaos:' + data.event, { detail: data.payload });
             window.dispatchEvent(evt);
@@ -188,7 +163,8 @@
         notify: (message, title) => post('show_notification', { message, title }),
         copyToClipboard: (text) => post('copy_to_clipboard', { text }),
         openExternal: (url) => post('open_external', { url }),
-        ask: (text, attachments) => post('ask_ai', { text, attachments }),
+        ask: (text, attachments) => post('agent_trigger', { instruction: text, options: { attachments } }),
+        agent: (instruction, options) => post('agent_trigger', { instruction, options }),
         ready: () => post('view_ready', {}),
         on: (event, callback) => window.addEventListener('metaos:' + event, (e) => callback(e.detail)),
         renameFile: (oldPath, newPath) => post('rename_file', { oldPath, newPath }),
