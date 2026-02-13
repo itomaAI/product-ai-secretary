@@ -60,6 +60,12 @@
 			return Object.keys(this.files).some(key => key.startsWith(p));
 		}
 
+        loadFiles(newFiles) {
+            this.files = { ...newFiles };
+            this._recalculateTotalSize();
+            this.notify();
+        }
+
 		readFile(path) {
 			const p = this._norm(path);
 			if (!this.exists(p)) throw new Error(`File not found: ${p}`);

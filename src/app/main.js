@@ -76,9 +76,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 	let saveDebounceTimer = null;
 
 	const loadSystemData = (payload) => {
-		Object.keys(vfs.files).forEach(k => delete vfs.files[k]);
-		Object.assign(vfs.files, payload.files);
-		vfs.notify();
+		// Use VFS method to ensure size recalculation
+		vfs.loadFiles(payload.files);
+
 		state.history = payload.state || [];
 		ui.chat.renderHistory(state.getHistory());
 		ui.refreshPreview();
@@ -92,16 +92,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 				loadSystemData(systemState);
 			} else {
 				console.log("Initializing fresh system...");
-				Object.assign(vfs.files, Config.DEFAULT_FILES);
-				vfs.notify();
+				// Use VFS method
+				vfs.loadFiles(Config.DEFAULT_FILES);
+
 				ui.refreshPreview();
 				await storage.saveSystemState(vfs.files, state.getHistory());
 			}
 		} catch (e) {
 			console.error("System Initialization Failed:", e);
 			alert("System Load Error. Starting with defaults.");
-			Object.assign(vfs.files, Config.DEFAULT_FILES);
-			vfs.notify();
+
+			// Fallback with VFS method
+			vfs.loadFiles(Config.DEFAULT_FILES);
+
 			ui.refreshPreview();
 		}
 	};
@@ -207,9 +210,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 		} catch (e) {
 			console.error("Backup failed", e);
 		}
-		Object.keys(vfs.files).forEach(k => delete vfs.files[k]);
-		Object.assign(vfs.files, Config.DEFAULT_FILES);
-		vfs.notify();
+
+		// Use VFS method for reset
+		vfs.loadFiles(Config.DEFAULT_FILES);
+
 		state.history = [];
 		ui.chat.renderHistory([]);
 		ui.refreshPreview();
