@@ -331,6 +331,7 @@ Filename format: \`topic_YYYYMMDD.md\` (e.g., \`meeting_20260209.md\`).
     const CONFIG = {
         MODEL_NAME: "gemini-3-pro-preview",
         LANGUAGE: "Japanese",
+        VFS_CAPACITY_MB: 256,
         GENERATION_CONFIG: { temperature: 1.0, maxOutputTokens: 65536 },
         DEFAULT_FILES: global.App.InitialFiles || {},
         SYSTEM_PROMPT: META_FORGE_CORE_PROMPT + "\n\n" + META_OS_PERSONA_PROMPT

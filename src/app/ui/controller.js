@@ -33,8 +33,12 @@
 			this._initMetaOSBridge();
 			this._bindMobileUI();
 
-			// Watch VFS for Data Changes
-			this.vfs.subscribe((files, path, action) => {
+			// Watch VFS for Data Changes & Storage Usage
+			this.vfs.subscribe((files, path, action, usage) => {
+				// Update Storage UI
+				this._updateStorageUI(usage);
+
+				// Notify Host for Data Sync
 				if (path && path.startsWith('data/')) {
 					console.log(`[Controller] Data changed: ${path} (${action})`);
 					this._notifyMetaOS('file_changed', {
@@ -43,6 +47,9 @@
 					});
 				}
 			});
+
+			// Initial UI Update
+			this._updateStorageUI(this.vfs.getUsage());
 		}
 
 		on(event, callback) {
@@ -62,13 +69,39 @@
 		_initElements() {
 			['previewFrame', 'previewLoader', 'saveStatus',
 				'btnBackup', 'btnHistory', 'btnReset', 'historyModal', 'btnCloseModal', 'snapshotList', 'btnCreateSnapshot', 'btnDeleteAllSnapshots',
-				'sidebar', 'chatPanel', 'mobileOverlay', 'mobileNavFiles', 'mobileNavView', 'mobileNavChat'
+				'sidebar', 'chatPanel', 'mobileOverlay', 'mobileNavFiles', 'mobileNavView', 'mobileNavChat',
+				'storageUsageBar', 'storageUsageText'
 			]
 			.forEach(key => {
 				let id = DOM[key];
 				if (!id) id = key.replace(/[A-Z]/g, m => '-' + m.toLowerCase());
 				this.els[key] = document.getElementById(id);
 			});
+		}
+
+		_updateStorageUI(usage) {
+			if (!usage || !this.els.storageUsageBar || !this.els.storageUsageText) return;
+
+			// Format: "12.5 / 256.0 MB"
+			const usedMB = (usage.used / 1024 / 1024).toFixed(1);
+			const maxMB = (usage.max / 1024 / 1024).toFixed(1);
+			this.els.storageUsageText.textContent = `${usedMB} / ${maxMB} MB`;
+
+			const percent = Math.min(100, usage.percent);
+			this.els.storageUsageBar.style.width = `${percent}%`;
+
+			// Color logic
+			this.els.storageUsageBar.className = 'absolute top-0 left-0 h-full transition-all duration-500 ease-out';
+			if (percent > 95) {
+				this.els.storageUsageBar.classList.add('bg-red-500', 'animate-pulse');
+				this.els.storageUsageText.classList.add('text-red-400', 'font-bold');
+			} else if (percent > 80) {
+				this.els.storageUsageBar.classList.add('bg-yellow-500');
+				this.els.storageUsageText.classList.remove('text-red-400', 'font-bold');
+			} else {
+				this.els.storageUsageBar.classList.add('bg-blue-500');
+				this.els.storageUsageText.classList.remove('text-red-400', 'font-bold');
+			}
 		}
 
 		_wireComponents() {
@@ -98,13 +131,17 @@
 			});
 
 			this.editor.on('save', (path, content) => {
-				this.vfs.writeFile(path, content);
-				const lpml = `<event type="file_change">\nUser edited file content: ${path}\n</event>`;
-				this.state.appendTurn(global.REAL.Role.SYSTEM, lpml, {
-					type: 'event_log'
-				});
-				this.chat.renderHistory(this.state.getHistory());
-				this.refreshPreview();
+				try {
+					this.vfs.writeFile(path, content);
+					const lpml = `<event type="file_change">\nUser edited file content: ${path}\n</event>`;
+					this.state.appendTurn(global.REAL.Role.SYSTEM, lpml, {
+						type: 'event_log'
+					});
+					this.chat.renderHistory(this.state.getHistory());
+					this.refreshPreview();
+				} catch (e) {
+					alert(e.message); // 容量オーバー時などの通知
+				}
 			});
 		}
 

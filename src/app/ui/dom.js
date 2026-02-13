@@ -22,6 +22,8 @@
         btnDownload: 'btn-download',
         btnImportBackup: 'btn-import-backup',
         importBackupInput: 'import-backup-input',
+        storageUsageBar: 'storage-usage-bar',
+        storageUsageText: 'storage-usage-text',
         contextMenu: 'context-menu',
         previewFrame: 'preview-frame',
         previewLoader: 'preview-loader',
