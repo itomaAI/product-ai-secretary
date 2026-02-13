@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
     
     <style>
-        /* Mobile Scroll Fix: アドレスバー対策 */
+        /* Mobile Scroll Fix */
         body { height: 100vh; height: 100dvh; }
         
         ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -19,7 +19,6 @@
         ::-webkit-scrollbar-thumb:hover { background: #555; }
         body { font-family: 'Inter', system-ui, sans-serif; }
         
-        /* Utility */
         .resizer {
             width: 4px;
             background: #1f2937;
@@ -128,7 +127,7 @@
 
             <div class="flex-1 overflow-y-auto p-0" id="file-explorer"></div>
 
-            <!-- Bottom Upload Area: Adjusted padding for Mobile Nav -->
+            <!-- Bottom Upload Area -->
             <div class="p-3 border-t border-gray-700 space-y-2 bg-gray-800 pb-20 md:pb-3">
                 <div class="grid grid-cols-2 gap-2">
                     <label class="block text-center cursor-pointer bg-gray-700/50 hover:bg-gray-700 py-1.5 rounded text-[10px] text-gray-300 transition border border-gray-600 border-dashed hover:border-gray-500">
@@ -185,11 +184,12 @@
             <!-- Code Editor Overlay (z-30) inside Relative Center -->
             <div id="editor-overlay" class="absolute inset-0 bg-gray-900 hidden z-30 flex flex-col pt-12 md:pt-0">
                 <div class="h-9 bg-gray-800 flex justify-between items-center px-4 border-b border-gray-700 shrink-0">
-                    <div class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
-                        <span id="editor-filename" class="text-xs font-mono text-gray-200 truncate max-w-[150px]">filename.js</span>
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <svg class="w-4 h-4 text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                        <!-- ★ 修正: PC(md)以上では max-w-none で省略解除 -->
+                        <span id="editor-filename" class="text-xs font-mono text-gray-200 truncate max-w-[150px] md:max-w-none">filename.js</span>
                     </div>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 shrink-0">
                         <button id="btn-save-editor" class="text-[10px] font-bold bg-blue-700 hover:bg-blue-600 px-3 py-1 rounded text-white transition shadow-sm border border-blue-600">Save</button>
                         <button id="btn-close-editor" class="text-gray-400 hover:text-white hover:bg-gray-700 rounded w-6 h-6 flex items-center justify-center transition">✕</button>
                     </div>

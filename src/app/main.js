@@ -140,16 +140,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 	// --- Snapshot Event Listeners ---
 
-	// Refactored to be non-blocking for UI
 	document.addEventListener('create-snapshot', async (e) => {
 		const {
 			label
 		} = e.detail;
-		// Use setTimeout to allow UI render (spinner) to appear before main thread freezes for serialization
 		setTimeout(async () => {
 			try {
 				await storage.createSnapshot(label, vfs.files, state.getHistory());
-				// Refresh list if modal is open
 				const list = await storage.listSnapshots();
 				ui.renderSnapshotList(list);
 				console.log("Snapshot created");
@@ -193,11 +190,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 		ui.renderSnapshotList(await storage.listSnapshots());
 	});
 
-	// ★ 追加: 全削除イベントハンドラ
 	document.addEventListener('delete-all-snapshots', async () => {
 		try {
 			await storage.deleteAllSnapshots();
-			ui.renderSnapshotList([]); // Clear list
+			ui.renderSnapshotList([]);
 			alert("All snapshots deleted.");
 		} catch (e) {
 			console.error(e);
@@ -221,16 +217,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 		alert('System reset complete.');
 	});
 
-	setInterval(async () => {
-		try {
-			const timestamp = new Date().toLocaleString();
-			// Silent auto backup
-			await storage.createSnapshot(`Auto Backup (${timestamp})`, vfs.files, state.getHistory());
-			await storage.pruneSnapshots();
-		} catch (e) {
-			console.error("Auto-backup failed:", e);
-		}
-	}, 30 * 60 * 1000);
+	// ★ 修正: 定期バックアップ (setInterval) を削除しました
 
 	ui.chat.on('send', async (text, files) => {
 		ui.chat.setProcessing(true);
