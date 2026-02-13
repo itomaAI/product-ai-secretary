@@ -25,8 +25,11 @@
 				console.warn("Failed to load persona config", e);
 			}
 
+			// Current Time Info
 			const now = new Date();
-			const timePrompt = `\n\n<system_info>\nCurrent Time: ${now.toLocaleString()}\nTimestamp: ${now.toISOString()}\n</system_info>`;
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const dayName = days[now.getDay()];
+			const timePrompt = `\n\n<system_info>\nCurrent Time: ${now.toLocaleString()} (${dayName})\nTimestamp: ${now.toISOString()}\n</system_info>`;
 
 			apiMessages.push({
 				role: 'user',
