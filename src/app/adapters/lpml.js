@@ -121,7 +121,7 @@
 	class LPMLAdapter extends global.REAL.ParserAdapter {
 		constructor() {
 			super();
-			this.excludeTags = ['create_file', 'edit_file', 'ask', 'think'];
+			this.excludeTags = ['create_file', 'edit_file', 'ask', 'thinking', 'plan'];
 		}
 		parse(text) {
 			const tree = LPMLRegexParser.parseToTree(text, this.excludeTags);
