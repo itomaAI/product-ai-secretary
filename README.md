@@ -1,4 +1,3 @@
-
 # MetaOS
 
 **An Intelligent Personal Secretary System running entirely in your browser.**
@@ -16,7 +15,7 @@ Unlike traditional apps where you manually input data, MetaOS allows you to simp
 
 ### Key Concepts
 - **Host-Driven Intelligence**: The "Brain" (MetaForge AI) resides in the host environment and manipulates the "Body" (MetaOS Dashboard).
-- **Single-Tenant Architecture**: Designed as a persistent partner, not a disposable project. Includes a "Time Machine" to rollback state.
+- **Single-Tenant Architecture**: Designed as a persistent partner, not a disposable project. Includes a "Time Machine" to manage system states.
 - **Local Execution**: Runs 100% client-side using browser technologies (IndexedDB, VFS). No backend server required.
 
 ---
@@ -30,13 +29,14 @@ Unlike traditional apps where you manually input data, MetaOS allows you to simp
 
 ### 2. Apps & Tools
 - **Calendar**: Visual monthly calendar integrated with the event database.
-- **Notes**: Markdown-based note-taking app with auto-save.
+- **Notes**: Markdown-based note-taking app with a folder structure (`data/notes/`).
 - **Monaco Editor**: A professional-grade code editor built into the host for direct file manipulation.
 
-### 3. Time Machine (Backup & Recovery)
-- **Auto-Backup**: The system creates snapshots every 30 minutes.
-- **Smart Pruning**: Keeps recent backups but thins out older ones (1 per day after 24h, deletes after 2 weeks).
-- **Instant Restore**: Rollback the entire OS state to any previous point in time.
+### 3. Time Machine (Save & Recovery)
+- **Auto-Save**: The system automatically saves the state (VFS and chat history) whenever you interact with the AI or modify files.
+- **Manual Snapshots**: You can create named backups at any time before making significant changes.
+- **Instant Restore**: Rollback the entire OS state to any previous snapshot instantly.
+- **Zip Export**: Download the entire system as a backup file (`.bk` or `.zip`) to migrate to another environment.
 
 ### 4. Hackable & Self-Constructing
 - **You are the Developer**: The entire Dashboard is just HTML/JS files in the VFS. You can edit them directly using the Monaco Editor.
@@ -61,21 +61,21 @@ Type naturally in the chat panel on the right.
 
 ### Manual Control
 - **Edit Files**: Open `data/` files in the file explorer to edit JSON directly. The dashboard updates in real-time.
-- **Backup**: Click the **Save Icon** to create a manual snapshot before making big changes.
+- **Backup**: Click the **Save Icon** at the top to create a manual snapshot whenever needed.
 
 ---
 
 ## 🏗️ Technical Architecture
 
 ### The Stack
-- **Engine**: MetaForge v2.2 (Gemini-powered LLM loop).
+- **Engine**: MetaForge v2.2 (Agent-Environment Loop).
 - **Storage**: Virtual File System (VFS) backed by IndexedDB.
 - **View**: HTML/JS Apps running in a sandboxed `iframe`.
 
 ### The Bridge
 Host and Guest communicate via the `MetaOS Bridge`:
 1.  **Host -> Guest**: Sends `file_changed` events when the AI or Editor modifies data. The Guest performs a "Hot Update" (re-renders without reloading).
-2.  **Guest -> Host**: Sends `save_file` requests when you interact with the Dashboard.
+2.  **Guest -> Host**: Sends `save_file` requests when you interact with the Dashboard, saving changes to the VFS.
 
 ---
 
