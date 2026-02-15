@@ -1,3 +1,4 @@
+// src/app/adapters/projector.js
 (function(global) {
 	global.App = global.App || {};
 	global.App.Adapters = global.App.Adapters || {};
@@ -27,8 +28,8 @@
 
 			// Current Time Info
 			const now = new Date();
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const dayName = days[now.getDay()];
+			const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+			const dayName = days[now.getDay()];
 			const timePrompt = `\n\n<system_info>\nCurrent Time: ${now.toLocaleString()} (${dayName})\nTimestamp: ${now.toISOString()}\n</system_info>`;
 
 			apiMessages.push({
@@ -83,25 +84,39 @@
 				}
 				if (turn.role === Role.USER) {
 					const parts = [];
-					let textBuffer = "";
-					const flushText = () => {
-						if (textBuffer.trim()) {
+					let userInputBuffer = "";
+
+					const flushUserInput = () => {
+						if (userInputBuffer.trim()) {
 							parts.push({
-								text: `<user_input>\n${textBuffer.trim()}\n</user_input>`
+								text: `<user_input>\n${userInputBuffer.trim()}\n</user_input>`
 							});
 						}
-						textBuffer = "";
+						userInputBuffer = "";
 					};
+
 					for (const item of turn.content) {
-						if (item.text) textBuffer += item.text + "\n";
-						else if (item.inlineData) {
-							flushText();
+						if (item.text) {
+							const trimmed = item.text.trim();
+							// user_attachment または user_input タグで始まる場合は、
+							// すでに構造化されているとみなし、バッファをフラッシュしてそのまま追加する
+							if (trimmed.startsWith('<user_attachment') || trimmed.startsWith('<user_input')) {
+								flushUserInput();
+								parts.push({
+									text: item.text
+								});
+							} else {
+								// 通常のテキストはバッファに溜めて、後で <user_input> で囲む
+								userInputBuffer += item.text + "\n";
+							}
+						} else if (item.inlineData) {
+							flushUserInput();
 							parts.push({
 								inlineData: item.inlineData
 							});
 						}
 					}
-					flushText();
+					flushUserInput();
 					return parts;
 				}
 				return turn.content.map(c => {

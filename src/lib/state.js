@@ -17,6 +17,9 @@
 			this.history.push(turn);
 			return turn;
 		}
+		deleteTurn(id) {
+			this.history = this.history.filter(t => t.id !== id);
+		}
 		getHistory() {
 			return this.history;
 		}

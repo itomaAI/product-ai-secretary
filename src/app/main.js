@@ -257,9 +257,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 	ui.chat.on('send', async (text, files) => {
 		ui.chat.setProcessing(true);
 		const content = [];
-		if (text) content.push({
-			text
-		});
+
+		// 1. Attachments first (ファイル添付を先に処理)
 		for (const file of files) {
 			if (file.type.startsWith('text/') || file.name.match(/\.(js|py|html|json|css|md|txt)$/)) {
 				content.push({
@@ -274,7 +273,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 				});
 			}
 		}
+
+		// 2. User Text Input last (テキスト入力を後に処理)
+		if (text) {
+			content.push({
+				text
+			});
+		}
+
 		engine.llm = createLLM();
+
 		try {
 			await engine.injectUserTurn(content);
 		} catch (e) {
@@ -288,12 +296,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 		engine.stop();
 		ui.chat.setProcessing(false);
 	});
+
 	ui.chat.on('clear', () => {
 		if (confirm("Clear chat history?")) {
 			state.history = [];
 			ui.chat.renderHistory([]);
 			triggerAutoSave();
 		}
+	});
+
+	ui.chat.on('delete_turn', (id) => {
+		state.deleteTurn(id);
+		ui.chat.renderHistory(state.getHistory());
+		triggerAutoSave();
 	});
 
 	const btnDownload = document.getElementById(DOM.btnDownload);
