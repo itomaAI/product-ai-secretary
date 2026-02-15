@@ -36,7 +36,7 @@
 		});
 		registry.register('ask', async (params, state) => {
 			return {
-				log: `[ask] ${params.content}`,
+				log: `[ask] Displayed to user.`,
 				ui: `❓ ${params.content}`,
 				signal: Signal.HALT
 			};
@@ -50,7 +50,7 @@
 		}, Signal.TERMINATE);
 		registry.register('report', async (params, state) => {
 			return {
-				log: `[report] ${params.content}`,
+				log: `[report] Displayed to user.`,
 				ui: `📢 ${params.content}`,
 				signal: Signal.CONTINUE
 			};
