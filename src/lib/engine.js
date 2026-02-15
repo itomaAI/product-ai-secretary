@@ -164,7 +164,9 @@
 						results
 					});
 					currentSignal = dominantSignal;
-					await new Promise(r => setTimeout(r, 10));
+
+					// APIレートリミット対策: 次のターン（LLMリクエスト）まで1秒待機
+					await new Promise(r => setTimeout(r, 1000));
 				}
 			} catch (error) {
 				if (error.name === 'AbortError') console.log('Loop aborted.');
