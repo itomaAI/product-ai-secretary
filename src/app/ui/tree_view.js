@@ -42,7 +42,7 @@
 				li.className = 'tree-node select-none';
 
 				const div = document.createElement('div');
-				div.className = `tree-content hover:bg-gray-700 cursor-pointer flex items-center py-0.5 px-2 border-l-2 border-transparent transition ${this.selectedPath === node.path ? 'bg-gray-700 border-blue-500' : ''}`;
+				div.className = `tree-content group hover:bg-gray-700 cursor-pointer flex items-center py-0.5 px-2 border-l-2 border-transparent transition ${this.selectedPath === node.path ? 'bg-gray-700 border-blue-500' : ''}`;
 				div.style.paddingLeft = `${indentLevel * 12 + 8}px`;
 				div.dataset.path = node.path;
 				div.dataset.type = node.type;
@@ -62,9 +62,29 @@
 					(this.expandedPaths.has(node.path) ? '📂' : '📁') :
 					this._getFileIcon(node.name);
 
-				div.innerHTML = `<span class="mr-2 opacity-80 text-xs pointer-events-none">${icon}</span><span class="truncate pointer-events-none">${node.name}</span>`;
+				// ★ 修正: buttonに `md:hidden` を追加 (PCサイズでは非表示)
+				div.innerHTML = `
+					<span class="mr-2 opacity-80 text-xs pointer-events-none flex-shrink-0">${icon}</span>
+					<span class="truncate pointer-events-none flex-1">${node.name}</span>
+					<button class="menu-btn w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white hover:bg-gray-600 rounded ml-1 transition flex-shrink-0 md:hidden" title="Menu" aria-label="Context Menu">
+						<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+					</button>
+				`;
+
 				div.onclick = (e) => this._handleClick(e, node);
 				div.oncontextmenu = (e) => this._handleContextMenu(e, node);
+
+				// メニューボタンのクリックイベント
+				const menuBtn = div.querySelector('.menu-btn');
+				if (menuBtn) {
+					menuBtn.onclick = (e) => {
+						e.stopPropagation();
+						e.preventDefault();
+						const rect = menuBtn.getBoundingClientRect();
+						this.selectedPath = node.path;
+						this._showContextMenu(rect.left, rect.bottom, node);
+					};
+				}
 
 				li.appendChild(div);
 
@@ -335,12 +355,15 @@
 			let posX = x;
 			let posY = y;
 
+			// 画面外にはみ出さないように補正
 			if (posX + rect.width > winWidth) {
 				posX = winWidth - rect.width - 5;
 			}
 			if (posY + rect.height > winHeight) {
 				posY = winHeight - rect.height - 5;
 			}
+			// モバイルでタッチ位置が右端すぎた場合の補正
+			if (posX < 0) posX = 5;
 
 			this.contextMenu.style.left = `${posX}px`;
 			this.contextMenu.style.top = `${posY}px`;

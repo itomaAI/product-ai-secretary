@@ -48,7 +48,10 @@
 			};
 		});
 		registry.register('create_file', async (params, state) => {
-			const msg = vfs.writeFile(params.path, params.content);
+			let content = params.content || "";
+			content = content.replace(/^\r?\n/, '').replace(/\r?\n$/, '');
+
+			const msg = vfs.writeFile(params.path, content);
 			return {
 				log: `[create_file] ${msg}`,
 				ui: `📝 Created ${params.path}`
