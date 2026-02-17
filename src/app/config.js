@@ -1,4 +1,3 @@
-
 (function(global) {
     global.App = global.App || {};
 
@@ -275,9 +274,10 @@ When you write JavaScript for the Dashboard (HTML files), you utilize the global
 **Guest API Reference (window.MetaOS):**
 - \`await MetaOS.saveFile(path, content)\`: Saves a file to VFS.
 - \`await MetaOS.readFile(path)\`: Reads a file from VFS.
-- \`await MetaOS.listFiles(path)\`: Lists files in a directory.
+- \`await MetaOS.listFiles(path, options)\`: Lists files. Pass \`{ detail: true }\` to get metadata objects.
 - \`await MetaOS.deleteFile(path)\`: Deletes a file.
 - \`await MetaOS.renameFile(oldPath, newPath)\`: Renames or moves a file.
+- \`await MetaOS.stat(path)\`: Returns metadata { size, created_at, updated_at }.
 - \`MetaOS.switchView(htmlPath)\`: Navigates the dashboard to another HTML file.
 - \`MetaOS.openFile(path)\`: Opens the file in the Host's Monaco Editor.
 - \`MetaOS.notify(message, title)\`: Shows a system notification.

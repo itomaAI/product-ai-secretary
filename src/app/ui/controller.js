@@ -18,11 +18,10 @@
 			this.state = state;
 			this.compiler = compiler;
 			this.els = {};
-			this.events = {}; // イベント保持用
+			this.events = {};
 
 			this._initElements();
 
-			// Initialize Components
 			this.chat = new ChatComponent();
 			this.editor = new EditorComponent();
 			this.mediaViewer = new MediaViewer();
@@ -33,12 +32,8 @@
 			this._initMetaOSBridge();
 			this._bindMobileUI();
 
-			// Watch VFS for Data Changes & Storage Usage
 			this.vfs.subscribe((files, path, action, usage) => {
-				// Update Storage UI
 				this._updateStorageUI(usage);
-
-				// Notify Host for Data Sync
 				if (path && path.startsWith('data/')) {
 					console.log(`[Controller] Data changed: ${path} (${action})`);
 					this._notifyMetaOS('file_changed', {
@@ -48,7 +43,6 @@
 				}
 			});
 
-			// Initial UI Update
 			this._updateStorageUI(this.vfs.getUsage());
 		}
 
@@ -81,16 +75,11 @@
 
 		_updateStorageUI(usage) {
 			if (!usage || !this.els.storageUsageBar || !this.els.storageUsageText) return;
-
-			// Format: "12.5 / 256.0 MB"
 			const usedMB = (usage.used / 1024 / 1024).toFixed(1);
 			const maxMB = (usage.max / 1024 / 1024).toFixed(1);
 			this.els.storageUsageText.textContent = `${usedMB} / ${maxMB} MB`;
-
 			const percent = Math.min(100, usage.percent);
 			this.els.storageUsageBar.style.width = `${percent}%`;
-
-			// Color logic
 			this.els.storageUsageBar.className = 'absolute top-0 left-0 h-full transition-all duration-500 ease-out';
 			if (percent > 95) {
 				this.els.storageUsageBar.classList.add('bg-red-500', 'animate-pulse');
@@ -140,7 +129,7 @@
 					this.chat.renderHistory(this.state.getHistory());
 					this.refreshPreview();
 				} catch (e) {
-					alert(e.message); // 容量オーバー時などの通知
+					alert(e.message);
 				}
 			});
 		}
@@ -173,11 +162,25 @@
 						case 'read_file':
 							result = this.vfs.readFile(payload.path);
 							break;
-						case 'list_files':
-							const files = this.vfs.listFiles();
-							if (payload.path) result = files.filter(f => f.startsWith(payload.path));
-							else result = files;
+						case 'stat_file': // ★ 追加
+							result = this.vfs.stat(payload.path);
 							break;
+						case 'list_files': {
+							const options = payload.options || {};
+							const allFiles = this.vfs.listFiles(options);
+							
+							if (payload.path) {
+								const prefix = payload.path;
+								if (options.detail) {
+									result = allFiles.filter(f => f.path.startsWith(prefix));
+								} else {
+									result = allFiles.filter(f => f.startsWith(prefix));
+								}
+							} else {
+								result = allFiles;
+							}
+							break;
+						}
 						case 'delete_file':
 							this.vfs.deleteFile(payload.path);
 							try {
@@ -203,7 +206,6 @@
 							this.state.appendTurn(global.REAL.Role.USER, lpml);
 							this.chat.renderHistory(this.state.getHistory());
 							break;
-							// ★ Agent Interface Trigger
 						case 'agent_trigger':
 							if (this.events['ai_request']) {
 								this.events['ai_request'](payload.instruction, payload.options);

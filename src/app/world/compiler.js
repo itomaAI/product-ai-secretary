@@ -119,7 +119,7 @@
 		}
 
 		injectMetaOSBridge(html) {
-			// ★ agent メソッドを追加
+			// ★ 修正: 注入スクリプトに新API (stat, listFiles options) を追加
 			const script = `
 <script>
 (function(global) {
@@ -158,7 +158,13 @@
         switchView: (path) => post('switch_view', { path }),
         saveFile: (path, content) => post('save_file', { path, content }),
         readFile: (path) => post('read_file', { path }),
-        listFiles: (path) => post('list_files', { path }),
+        
+        // ★ UPDATED: オプション引数を追加
+        listFiles: (path, options) => post('list_files', { path, options }),
+        
+        // ★ ADDED: stat API
+        stat: (path) => post('stat_file', { path }),
+        
         deleteFile: (path) => post('delete_file', { path }),
         notify: (message, title) => post('show_notification', { message, title }),
         copyToClipboard: (text) => post('copy_to_clipboard', { text }),

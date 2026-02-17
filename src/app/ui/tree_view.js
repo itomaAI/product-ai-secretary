@@ -1,3 +1,5 @@
+// src/app/ui/tree_view.js
+
 (function(global) {
 	global.App = global.App || {};
 	global.App.UI = global.App.UI || {};
@@ -47,6 +49,15 @@
 				div.dataset.path = node.path;
 				div.dataset.type = node.type;
 
+				// ★ メタデータツールチップの生成
+				if (node.meta) {
+					const sizeKB = (node.meta.size / 1024).toFixed(1) + ' KB';
+					const updated = new Date(node.meta.updated_at).toLocaleString();
+					div.title = `Size: ${sizeKB}\nUpdated: ${updated}`;
+				} else {
+					div.title = node.path;
+				}
+
 				// --- Drag & Drop Events ---
 				div.draggable = true;
 				div.addEventListener('dragstart', (e) => this._handleDragStart(e, node));
@@ -62,7 +73,6 @@
 					(this.expandedPaths.has(node.path) ? '📂' : '📁') :
 					this._getFileIcon(node.name);
 
-				// ★ 修正: buttonに `md:hidden` を追加 (PCサイズでは非表示)
 				div.innerHTML = `
 					<span class="mr-2 opacity-80 text-xs pointer-events-none flex-shrink-0">${icon}</span>
 					<span class="truncate pointer-events-none flex-1">${node.name}</span>

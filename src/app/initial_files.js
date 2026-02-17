@@ -1,3 +1,4 @@
+// src/app/initial_files.js
 
 (function(global) {
     global.App = global.App || {};
@@ -1627,12 +1628,17 @@ window.App = {
     // Helper to get current month key for default files
     const CURRENT_MONTH = new Date().toISOString().slice(0, 7);
 
+    // ★ Updated to include llm config
     const REF_CONFIG_JSON = JSON.stringify({
         "username": "User",
         "secretaryName": "MetaOS",
         "theme": "dark",
         "defaultView": "index.html",
-        "dateFormat": "YYYY-MM-DD"
+        "dateFormat": "YYYY-MM-DD",
+        "llm": {
+            "model": "gemini-3-pro-preview",
+            "temperature": 1.0
+        }
     }, null, 4);
 
     const REF_INIT_MD = `

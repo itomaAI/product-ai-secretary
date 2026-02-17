@@ -1,11 +1,8 @@
 // src/app/world/bridge.js
 // MetaOS Client Bridge
-// Injected into the iframe to allow communication with the Host (MetaForge)
-
 (function(global) {
 	const REQUESTS = new Map();
 
-	// Listen for responses from Host
 	window.addEventListener('message', (event) => {
 		const data = event.data;
 		if (!data || data.type !== 'METAOS_RESPONSE') return;
@@ -41,7 +38,6 @@
 				payload
 			}, '*');
 
-			// Timeout safety (10s)
 			setTimeout(() => {
 				if (REQUESTS.has(requestId)) {
 					REQUESTS.delete(requestId);
@@ -65,9 +61,13 @@
 		readFile: (path) => post('read_file', {
 			path
 		}),
-		listFiles: (path) => post('list_files', {
+		stat: (path) => post('stat_file', { // ★ 追加
 			path
 		}),
+        listFiles: (path, options = {}) => post('list_files', {
+            path,
+            options
+        }),
 		deleteFile: (path) => post('delete_file', {
 			path
 		}),
@@ -89,6 +89,10 @@
 			text,
 			attachments
 		}),
+		agent: (instruction, options) => post('agent_trigger', {
+			instruction,
+			options
+		}),
 
 		// --- Host Integration ---
 		renameFile: (oldPath, newPath) => post('rename_file', {
@@ -99,7 +103,6 @@
 			path
 		}),
 
-		// Utility
 		ready: () => post('view_ready', {})
 	};
 

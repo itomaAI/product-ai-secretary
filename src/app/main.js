@@ -56,11 +56,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 	if (apiKey && document.getElementById(DOM.apiKey)) {
 		document.getElementById(DOM.apiKey).value = apiKey;
 	}
-	if (document.getElementById(DOM.modelStatus)) {
-		document.getElementById(DOM.modelStatus).innerText = Config.MODEL_NAME;
-	}
 
-	const createLLM = () => new GeminiAdapter(apiKey, Config.MODEL_NAME);
+	// ★ Dynamic Model Config
+	const createLLM = () => {
+		let modelName = Config.MODEL_NAME;
+		try {
+			if (vfs.exists('system/config.json')) {
+				const conf = JSON.parse(vfs.readFile('system/config.json'));
+				if (conf.llm && conf.llm.model) {
+					modelName = conf.llm.model;
+				}
+			}
+		} catch (e) {
+			console.warn("Failed to read system/config.json for model config:", e);
+		}
+
+		// UI update (optional but nice)
+		if (document.getElementById(DOM.modelStatus)) {
+			document.getElementById(DOM.modelStatus).innerText = modelName;
+		}
+
+		return new GeminiAdapter(apiKey, modelName);
+	};
+
 	const engine = new Engine(state, projector, createLLM(), parser, registry);
 
 	const fileToBase64 = (file) => {
@@ -318,9 +336,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 			return;
 		}
 		const zip = new JSZip();
-		vfs.listFiles().forEach(path => {
+		// ★ Export Logic Update for Object VFS
+		const files = vfs.files;
+		Object.keys(files).forEach(path => {
 			if (!path.startsWith('.sample/')) {
-				const content = vfs.readFile(path);
+				const fileData = files[path];
+				const content = fileData.content; // Extract content string
 				if (content.startsWith('data:')) {
 					zip.file(path, content.split(',')[1], {
 						base64: true
