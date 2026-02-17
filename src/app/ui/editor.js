@@ -98,7 +98,14 @@
 						'html': 'html',
 						'css': 'css',
 						'json': 'json',
-						'md': 'markdown'
+						'md': 'markdown',
+						'py': 'python',
+						'ts': 'typescript',
+						'xml': 'xml',
+						'yaml': 'yaml',
+						'yml': 'yaml',
+						'sql': 'sql',
+						'sh': 'shell'
 					};
 					const lang = langMap[ext] || 'plaintext';
 
